@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="max_blue">#30d9ef</color>
+    <color name="min_blue">#96e8f3</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="light_grey">#D3D3D3</color>
+    <color name="gray">#B1B0B0</color>
+    <color name="dark_gray">#9D9A9A</color>
+    <color name="purple">#673AB7</color>
+
+    <color name="max_purple">#7129F4</color>
+    <color name="min_purple">#9866F8</color>
+    <color name="max_green">#5EDC14</color>
+
+    <color name="orange">#FFBE00</color>
+    <color name="blue">#3043EF</color>
+    <color name="blue1">#0A8EF7</color>
+    <color name="chip_background_color">#E3F2FD</color>
+    <color name="chip_checked_background_color">#2196F3</color>
+    <color name="chip_checked_text_color">#FFFFFF</color>
+    <color name="progress_calories">#FF5722</color>
+    <color name="progress_protein">#4CAF50</color>
+    <color name="progress_carbs">#FFC107</color>
+    <color name="progress_fat">#9C27B0</color>
+    <color name="progress_water">#2196F3</color>
+    <color name="gray_200">#FFEEEEEE</color>
+    <color name="gray_700">#FF616161</color>
+    <color name="primaryColor">#FF6200EE</color>
+    <color name="colorPrimary">#FF3F51B5</color> <!-- Your primary color -->
+    <color name="red">#FF4444</color>
+    <color name="green">#4CAF50</color>
+    <color name="light_red">#FFCCCB</color>
+    <color name="light_green">#C8E6C9</color>
+
+    <!-- Switch color selectors -->
+    <color name="switch_track_off">#FFCCCB</color>    <!-- Light red track when OFF -->
+    <color name="switch_track_on">#C8E6C9</color>     <!-- Light green track when ON -->
+    <color name="switch_thumb_off">#FF4444</color>    <!-- Red thumb when OFF -->
+    <color name="switch_thumb_on">#4CAF50</color>     <!-- Green thumb when ON -->
+
+    <!-- Add these color definitions -->
+    <color name="color_primary">#2196F3</color>
+    <color name="color_primary_dark">#1976D2</color>
+    <color name="color_accent">#FF4081</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="divider">#E0E0E0</color>
+
+    <!-- colors.xml - Brighter, more modern palette -->
+    <color name="background_light">#FFFFFFFF</color>
+    <color name="surface_light">#F8F9FA</color>
+    <color name="surface_variant">#E9ECEF</color>
+
+    <color name="primary_light">#4361EE</color>    <!-- Bright blue -->
+    <color name="accent_light">#7209B7</color>     <!-- Vibrant purple -->
+    <color name="success_green">#4CC9F0</color>    <!-- Bright teal -->
+
+
+
+    <!-- Gut Health Colors -->
+    <color name="gut_excellent">#4CAF50</color>  <!-- Green -->
+    <color name="gut_good">#8BC34A</color>       <!-- Light Green -->
+    <color name="gut_moderate">#FFC107</color>   <!-- Amber/Yellow -->
+    <color name="gut_caution">#FF9800</color>    <!-- Orange -->
+    <color name="gut_poor">#F44336</color>       <!-- Red -->
+    <color name="gut_neutral">#9E9E9E</color>
+    <color name="ic_launcher_background">#FF9800</color> <!-- Gray -->
+
+    <!-- Light theme colors -->
+    <color name="colorPrimaryLight">#3F51B5</color>
+    <color name="colorPrimaryDarkLight">#303F9F</color>
+    <color name="colorAccentLight">#FF4081</color>
+
+    <!-- Dark theme colors -->
+    <color name="colorPrimaryDark">#121212</color>
+    <color name="colorPrimaryDarkDark">#1E1E1E</color>
+    <color name="colorAccentDark">#03DAC6</color>
+
+
+
+
+
+</resources>

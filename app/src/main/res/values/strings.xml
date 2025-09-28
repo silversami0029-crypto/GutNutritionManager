@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">GutNutritionManager</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="log_food">Log Food</string>
+    <string name="symptoms">Symptom (e.g., Bloating, Headache, Fatigue)d</string>
+    <string name="log_symptoms">Log a Symptom for your last meal:</string>
+    <string name="log_insight">Refresh Insights</string>
+    <string name="today_log">Today\'s Log:\n</string>
+    <string name="severity">Severity:</string>
+    <string name="food_advice">Food Advice:</string>
+    <string name="today_insight">Today\'s Insight:\n</string>
+    <string name="food_you_ate">What did you eat? (e.g., Chicken, Rice, Onions)</string>
+    <string name="symptoms_you_exhibit">What are your symptoms? (e.g., bloating, headache)</string>
+</resources>
