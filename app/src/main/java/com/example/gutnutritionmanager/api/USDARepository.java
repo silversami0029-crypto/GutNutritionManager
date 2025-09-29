@@ -10,19 +10,17 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 
+import com.example.gutnutritionmanager.AppDatabase;
 import com.example.gutnutritionmanager.FODMAPClassifier;
 import com.example.gutnutritionmanager.Food;
 import com.example.gutnutritionmanager.FoodDao;
-import com.example.gutnutritionmanager.FoodDatabase;
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +37,7 @@ public class USDARepository {
 
     public USDARepository(Application application) {
         this.applicationContext = application.getApplicationContext();
-        FoodDatabase database = FoodDatabase.getDatabase(application);
+        AppDatabase database = AppDatabase.getDatabase(application);
         this.foodDao = database.foodDao();
         this.service = ApiClient.getUSDAApiService();
     }

@@ -84,8 +84,13 @@ dependencies {
         // Retrofit
         implementation ("com.squareup.retrofit2:retrofit:2.9.0")
         implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    //Room Database
+        implementation("androidx.room:room-ktx:2.4.3")
+        implementation("androidx.room:room-runtime:2.4.3")
 
-        // Other dependencies...
+        // PDF dependencies...
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("androidx.core:core-ktx:1.12.0")
 
 
 }

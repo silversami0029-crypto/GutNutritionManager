@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-@Database(entities = {LogEntry.class, Symptom.class, Food.class, FoodAdvice.class, USDAFoodMapping.class},
-        version = 15,
+@Database(entities = {LogEntry.class, Food.class, FoodAdvice.class, USDAFoodMapping.class, FoodLogEntity.class, Symptom.class},
+        version = 18,
         exportSchema = false)
 
 @TypeConverters({Converters.class})
@@ -34,7 +34,7 @@ public abstract class AppDatabase extends RoomDatabase {
             synchronized (AppDatabase.class) {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
-                                    AppDatabase.class, "nutrition_database_NEW_NEW")
+                                    AppDatabase.class, "nutrition_database_recent_new")
                             .fallbackToDestructiveMigration()
                             .addCallback(new RoomDatabase.Callback() {
                                 @Override

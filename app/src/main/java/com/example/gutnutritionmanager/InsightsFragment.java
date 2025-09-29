@@ -1,17 +1,22 @@
 package com.example.gutnutritionmanager;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,36 +46,109 @@ public class InsightsFragment extends Fragment {
         viewModel = new ViewModelProvider(requireActivity()).get(NutritionViewModel.class);
 
         // Set up refresh button
-        refreshButton.setOnClickListener(v -> loadInsights());
+        refreshButton.setOnClickListener(v -> loadBasicInsights());
 
         // Load insights initially
-        loadInsights();
+        loadBasicInsights();
+        //debugDataAvailability();
 
         return view;
     }
 
-    private void loadInsights() {
-        showLoading(true);
-        insightsTextView.setText("Analyzing your data...");
+    private void debugBrainGutData(List<FoodLogEntity> foodLogs) {
+        Log.d("BrainGutDebug", "=== BRAIN-GUT DATA ANALYSIS ===");
+        Log.d("BrainGutDebug", "Total food logs: " + foodLogs.size());
 
-        // Observe the log entries with symptoms
-        viewModel.getEntriesWithSymptoms().observe(getViewLifecycleOwner(), entries -> {
+        for (FoodLogEntity food : foodLogs) {
+            Log.d("BrainGutDebug", "Food: " + food.getFoodName() +
+                    " | Mood: " + food.getMood() +
+                    " | Stress: " + food.getStressLevel());
+        }
+
+        // Call this in your loadBasicInsights after getting foodLogs
+        debugBrainGutData(foodLogs);
+    }
+
+private String generateBasicInsights(List<FoodLogEntity> foodLogs) {
+    StringBuilder insights = new StringBuilder();
+
+    insights.append("🍽️ *YOUR FOOD INSIGHTS*\n\n");
+
+    // Basic statistics
+    insights.append("📊 *Statistics*\n");
+    insights.append("• Total foods logged: ").append(foodLogs.size()).append("\n");
+
+    // Count low FODMAP foods
+    long lowFodmapCount = 0;
+    for (FoodLogEntity food : foodLogs) {
+        if ("LOW".equals(food.getFodmapStatus())) {
+            lowFodmapCount++;
+        }
+    }
+    insights.append("• Gut-safe foods: ").append(lowFodmapCount).append("/").append(foodLogs.size()).append("\n\n");
+
+    // Most common foods
+    insights.append("🏆 *Most Common Foods*\n");
+    Map<String, Integer> foodCounts = new HashMap<>();
+    for (FoodLogEntity food : foodLogs) {
+        String foodName = food.getFoodName();
+        foodCounts.put(foodName, foodCounts.getOrDefault(foodName, 0) + 1);
+    }
+
+    // Show top 3 foods
+    foodCounts.entrySet().stream()
+            .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+            .limit(3)
+            .forEach(entry -> {
+                insights.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" times\n");
+            });
+    insights.append("\n");
+
+    // Preparation methods
+    insights.append("👨‍🍳 *Preparation Methods*\n");
+    Map<String, Integer> prepCounts = new HashMap<>();
+    for (FoodLogEntity food : foodLogs) {
+        String prep = food.getPreparation();
+        prepCounts.put(prep, prepCounts.getOrDefault(prep, 0) + 1);
+    }
+
+    for (Map.Entry<String, Integer> entry : prepCounts.entrySet()) {
+        insights.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" times\n");
+    }
+
+    return insights.toString();
+}
+
+
+    private void loadBasicInsights() {
+        showLoading(true);
+        insightsTextView.setText("Analyzing your brain-gut connection...");
+
+        AppDatabase database = AppDatabase.getDatabase(requireContext());
+        FoodDao foodDao = database.foodDao();
+
+        // Get both food logs and symptoms
+        foodDao.getAllFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
+            // Get symptoms (you'll need to implement this method in your DAO)
+            // foodDao.getAllSymptoms().observe(getViewLifecycleOwner(), symptoms -> {
             showLoading(false);
 
-            if (entries == null || entries.isEmpty()) {
-                insightsTextView.setText("No data available yet.\n\nLog some meals and symptoms to see insights about your digestive health.");
+            if (foodLogs == null || foodLogs.isEmpty()) {
+                insightsTextView.setText("No food data available yet.\n\nLog some meals with mood tracking to see brain-gut insights!");
                 return;
             }
 
-            try {
-                // Generate insights using the enhanced analyzer
-                String insights = generateComprehensiveInsights(entries);
-                insightsTextView.setText(insights);
-            } catch (Exception e) {
-                insightsTextView.setText("Error generating insights: " + e.getMessage());
-            }
+            // Generate combined insights
+            String basicInsights = generateBasicInsights(foodLogs);
+            // String brainGutInsights = generateBrainGutInsights(foodLogs, symptoms);
+            String brainGutInsights = generateBrainGutInsights(foodLogs, new ArrayList<>()); // Temporary
+
+            String allInsights = basicInsights + "\n" + brainGutInsights;
+            insightsTextView.setText(allInsights);
+            // });
         });
     }
+
     public void refreshInsights() {
         // Your refresh logic here
         if (refreshButton != null) {
@@ -216,6 +294,193 @@ public class InsightsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         // Refresh insights when fragment becomes visible
-        loadInsights();
+        loadBasicInsights();
     }
+
+
+    private void debugDataAvailability() {
+        AppDatabase database = AppDatabase.getDatabase(requireContext());
+        FoodDao foodDao = database.foodDao();
+
+        // Observe food logs using LiveData
+        foodDao.getAllFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
+            Log.d("InsightsDebug", "Food logs count: " + (foodLogs != null ? foodLogs.size() : 0));
+
+            if (foodLogs != null && !foodLogs.isEmpty()) {
+                for (int i = 0; i < Math.min(3, foodLogs.size()); i++) {
+                    FoodLogEntity log = foodLogs.get(i);
+                    Log.d("InsightsDebug", "Food " + i + ": " + log.getFoodName() + " | " + log.getPreparation());
+                }
+            } else {
+                Log.d("InsightsDebug", "No food logs found");
+            }
+        });
+
+        // If you have symptoms as LiveData, observe them too:
+        // foodDao.getAllSymptoms().observe(getViewLifecycleOwner(), symptoms -> {
+        //     Log.d("InsightsDebug", "Symptoms count: " + (symptoms != null ? symptoms.size() : 0));
+        // });
+    }
+
+// ADD THESE NEW METHODS FOR BRAIN-GUT INSIGHTS:
+
+    private String generateBrainGutInsights(List<FoodLogEntity> foodLogs, List<Symptom> symptoms) {
+        StringBuilder insights = new StringBuilder();
+
+        insights.append("🧠 BRAIN-GUT CONNECTION INSIGHTS\n\n");
+
+        // 1. Mood-Symptom Correlation
+        String moodInsight = analyzeMoodSymptomCorrelation(foodLogs, symptoms);
+        insights.append(moodInsight).append("\n");
+
+        // 2. Stress Impact Analysis
+        String stressInsight = analyzeStressImpact(foodLogs, symptoms);
+        insights.append(stressInsight).append("\n");
+
+        // 3. Gut-Calming Recommendations
+        String calmingInsights = generateGutCalmingRecommendations(foodLogs);
+        insights.append(calmingInsights).append("\n");
+
+        return insights.toString();
+    }
+
+    private String analyzeMoodSymptomCorrelation(List<FoodLogEntity> foodLogs, List<Symptom> symptoms) {
+        if (foodLogs.isEmpty() || symptoms.isEmpty()) {
+            return "📊 Mood-Symptom Patterns\nTrack more meals with symptoms to see mood correlations\n";
+        }
+
+        StringBuilder insight = new StringBuilder();
+        insight.append("📊 Mood-Symptom Patterns\n");
+
+        // Simple correlation: Count symptoms by mood
+        Map<String, Integer> moodSymptomCount = new HashMap<>();
+        Map<String, Integer> moodCount = new HashMap<>();
+
+        // This is simplified - in real app, you'd match by timestamp
+        for (FoodLogEntity food : foodLogs) {
+            String mood = food.getMood();
+            moodCount.put(mood, moodCount.getOrDefault(mood, 0) + 1);
+
+            // If we have symptoms around this time, count them
+            if (!symptoms.isEmpty()) {
+                moodSymptomCount.put(mood, moodSymptomCount.getOrDefault(mood, 0) + 1);
+            }
+        }
+
+        // Find mood with highest symptom correlation
+        String highestMood = "";
+        double highestRatio = 0;
+
+        for (String mood : moodCount.keySet()) {
+            int totalWithThisMood = moodCount.get(mood);
+            int symptomsWithThisMood = moodSymptomCount.getOrDefault(mood, 0);
+            double ratio = (double) symptomsWithThisMood / totalWithThisMood;
+
+            if (ratio > highestRatio) {
+                highestRatio = ratio;
+                highestMood = mood;
+            }
+
+            insight.append("• ").append(mood).append(": ")
+                    .append(symptomsWithThisMood).append("/").append(totalWithThisMood)
+                    .append(" meals had symptoms\n");
+        }
+
+        if (highestRatio > 0.5 && !highestMood.isEmpty()) {
+            insight.append("\n🔍 Insight: You're more likely to experience symptoms when eating while ")
+                    .append(highestMood.toLowerCase()).append("\n");
+        }
+
+        return insight.toString();
+    }
+
+    private String analyzeStressImpact(List<FoodLogEntity> foodLogs, List<Symptom> symptoms) {
+        if (foodLogs.isEmpty()) {
+            return "😰 Stress Impact\nTrack stress levels to see gut impact\n";
+        }
+
+        StringBuilder insight = new StringBuilder();
+        insight.append("😰 Stress Impact Analysis\n");
+
+        // Calculate average stress for symptomatic vs non-symptomatic meals
+        double totalStress = 0;
+        double highStressMeals = 0; // stress level 4-5
+        double lowStressMeals = 0;  // stress level 1-2
+
+        for (FoodLogEntity food : foodLogs) {
+            int stress = food.getStressLevel();
+            totalStress += stress;
+
+            if (stress >= 4) highStressMeals++;
+            if (stress <= 2) lowStressMeals++;
+        }
+
+        double avgStress = totalStress / foodLogs.size();
+        insight.append("• Average stress during meals: ").append(String.format("%.1f", avgStress)).append("/5\n");
+
+        if (highStressMeals > 0) {
+            double highStressPercent = (highStressMeals / foodLogs.size()) * 100;
+            insight.append("• ").append(String.format("%.0f", highStressPercent))
+                    .append("% of meals were during high stress\n");
+        }
+
+        if (avgStress > 3.0) {
+            insight.append("💡 Tip: High stress eating can trigger gut symptoms. Try calming exercises before meals.\n");
+        } else if (avgStress < 2.5) {
+            insight.append("🌟 Great: You're generally eating in a relaxed state!\n");
+        }
+
+        return insight.toString();
+    }
+
+    private String generateGutCalmingRecommendations(List<FoodLogEntity> foodLogs) {
+        StringBuilder recommendations = new StringBuilder();
+        recommendations.append("🛌 Gut-Calming Strategies\n");
+
+        // Analyze stress patterns to give personalized recommendations
+        long highStressMeals = foodLogs.stream()
+                .filter(food -> food.getStressLevel() >= 4)
+                .count();
+
+        if (highStressMeals > foodLogs.size() * 0.3) { // If 30%+ meals are high stress
+            recommendations.append("• Try 2-minute breathing before meals\n");
+            recommendations.append("• Practice mindful eating - no distractions\n");
+            recommendations.append("• Consider gentle walks after stressful meals\n");
+        } else {
+            recommendations.append("• Continue your good stress management!\n");
+            recommendations.append("• Try 4-7-8 breathing when feeling stressed: Inhale 4s, Hold 7s, Exhale 8s\n");
+        }
+
+        recommendations.append("• Vagal nerve exercise: Humming or gargling water\n");
+        recommendations.append("• Progressive muscle relaxation before bed\n");
+
+        return recommendations.toString();
+    }
+
+    // Temporary debug method - add this to InsightsFragment
+    private void createTestData() {
+        AppDatabase database = AppDatabase.getDatabase(requireContext());
+        FoodDao foodDao = database.foodDao();
+
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            // Clear existing test data if any
+            // foodDao.deleteAllFoodLogs(); // Use carefully!
+
+            // Add test food logs with different moods/stress
+            FoodLogEntity test1 = new FoodLogEntity(0, "Chicken", "Cooked", "Medium", "Lunch", "LOW", new Date(), "😊 Calm", 2);
+            FoodLogEntity test2 = new FoodLogEntity(0, "Rice", "Cooked", "Medium", "Lunch", "LOW", new Date(), "😰 Stressed", 4);
+            FoodLogEntity test3 = new FoodLogEntity(0, "Carrots", "Cooked", "Medium", "Dinner", "LOW", new Date(), "😟 Anxious", 5);
+            FoodLogEntity test4 = new FoodLogEntity(0, "Fish", "Cooked", "Medium", "Breakfast", "LOW", new Date(), "😊 Calm", 1);
+
+            foodDao.insert(test1);
+            foodDao.insert(test2);
+            foodDao.insert(test3);
+            foodDao.insert(test4);
+
+            requireActivity().runOnUiThread(() -> {
+                Toast.makeText(requireContext(), "Test data added! Refresh insights.", Toast.LENGTH_SHORT).show();
+            });
+        });
+    }
+
 }

@@ -59,7 +59,7 @@ public class NutritionViewModel extends AndroidViewModel {
             // Get the FoodDao from your database
             // Test the USDA API
             usdaRepository.testUSDAAPI();
-            FoodDatabase database = FoodDatabase.getDatabase(application);
+            AppDatabase database = AppDatabase.getDatabase(application);
             FoodDao foodDao = database.foodDao();
 
             // Pass the FoodDao to the repository

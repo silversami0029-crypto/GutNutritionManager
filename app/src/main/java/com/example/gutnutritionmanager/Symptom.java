@@ -2,10 +2,12 @@ package com.example.gutnutritionmanager;
 
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
+import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
-
 import static androidx.room.ForeignKey.CASCADE;
+
+import java.util.List;
 
 @Entity(tableName = "symptoms",
         foreignKeys = @ForeignKey(entity = LogEntry.class,
@@ -13,6 +15,7 @@ import static androidx.room.ForeignKey.CASCADE;
                 childColumns = "logEntryId",
                 onDelete = CASCADE),
         indices = {@Index("logEntryId")})
+
 public class Symptom {
     @PrimaryKey(autoGenerate = true)
     public int id;
@@ -24,10 +27,11 @@ public class Symptom {
     public Symptom() {
         // Default constructor required by Room
     }
-
+@Ignore
     public Symptom(int logEntryId, String name, int severity) {
         this.logEntryId = logEntryId;
         this.name = name;
         this.severity = severity;
     }
+
 }

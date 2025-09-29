@@ -96,12 +96,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginEnd="8dp"
+                        android:layout_marginEnd="2dp"
                         android:text="Log Food"
-                        android:textSize="14sp"
+                        android:textSize="12sp"
+                        android:gravity="center_vertical"
                         app:icon="@drawable/ic_add"
                         app:iconGravity="textStart"
-                        app:iconPadding="8dp"
+                        app:iconPadding="4dp"
                         app:cornerRadius="12dp"
                         app:backgroundTint="@color/primary_light" />
 
@@ -110,12 +111,13 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginStart="8dp"
-                        android:text="Add Symptom"
-                        android:textSize="14sp"
+                        android:layout_marginStart="1dp"
+                        android:text="Symptom"
+                        android:textSize="12sp"
+                        android:gravity="center_vertical"
                         app:icon="@drawable/ic_medical"
                         app:iconGravity="textStart"
-                        app:iconPadding="8dp"
+                        app:iconPadding="4dp"
                         app:cornerRadius="12dp"
                         app:backgroundTint="@color/surface_variant"
                         android:textColor="@color/text_primary"
@@ -237,6 +239,7 @@
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
         <!-- Quick Add IBS-Safe Foods Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -294,10 +297,9 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="16dp">
+                    android:layout_marginBottom="12dp">
 
                     <TextView
-                        android:id="@+id/diaryLogTextView"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
@@ -310,23 +312,21 @@
                         android:id="@+id/todayDate"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:text="Sep 28"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"
                         android:background="@drawable/date_chip"
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="4dp" />
+
                 </LinearLayout>
 
-                <!-- Food Log Items Container -->
-                <LinearLayout
-                    android:id="@+id/todayLogContainer"
+                <!-- Food Log RecyclerView -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/foodLogRecyclerView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <!-- Items will be added dynamically here -->
-
-                </LinearLayout>
+                    android:minHeight="100dp" />
 
                 <!-- Empty State -->
                 <LinearLayout
@@ -386,7 +386,7 @@
                             android:id="@+id/totalFoodsText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="5"
+                            android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
                             android:textColor="@color/primary_light" />
@@ -415,7 +415,7 @@
                             android:id="@+id/gutSafeText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="3"
+                            android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
                             android:textColor="@color/success_green" />
@@ -444,7 +444,7 @@
                             android:id="@+id/triggersText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="2"
+                            android:text="0"
                             android:textSize="24sp"
                             android:textStyle="bold"
                             android:textColor="@color/gut_caution" />

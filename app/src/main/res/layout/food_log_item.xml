@@ -1,55 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="1dp"
-    android:layout_marginBottom="8dp">
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="?attr/selectableItemBackground">
 
+    <!-- Food Emoji -->
+    <TextView
+        android:id="@+id/foodEmoji"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:text="🍽️"
+        android:textSize="16sp"
+        android:gravity="center" />
+
+    <!-- Food Details -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp">
 
-        <!-- Food Emoji -->
         <TextView
-            android:id="@+id/foodEmoji"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:text="🍗"
-            android:textSize="16sp"
-            android:gravity="center" />
-
-        <!-- Food Details -->
-        <LinearLayout
-            android:layout_width="0dp"
+            android:id="@+id/foodName"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp">
+            android:text="Food Name"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/foodDetails"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Preparation • Meal Type"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Mood and Stress in one line -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp">
 
             <TextView
-                android:id="@+id/foodName"
-                android:layout_width="match_parent"
+                android:id="@+id/moodText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Chicken"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:text="😊 Calm"
+                android:textSize="11sp"
+                android:paddingEnd="8dp" />
 
             <TextView
-                android:id="@+id/foodDetails"
-                android:layout_width="match_parent"
+                android:id="@+id/stressLevelText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Cooked • Lunch"
-                android:textSize="12sp"
+                android:text="Stress: 3/5"
+                android:textSize="11sp"
                 android:textColor="@color/text_secondary" />
 
         </LinearLayout>
 
-        <!-- FODMAP Status Badge -->
+    </LinearLayout>
+
+    <!-- FODMAP Badge and Delete Button -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center">
+
         <TextView
             android:id="@+id/fodmapBadge"
             android:layout_width="wrap_content"
@@ -57,11 +85,20 @@
             android:text="LOW"
             android:textSize="10sp"
             android:textStyle="bold"
-            android:background="@drawable/fodmap_low_badge"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:textColor="@android:color/white" />
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/fodmap_low_badge" />
+
+        <!-- Delete Button -->
+        <ImageButton
+            android:id="@+id/deleteButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?attr/selectableItemBackground"
+            android:padding="4dp"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 
-</com.google.android.material.card.MaterialCardView>
+</LinearLayout>
