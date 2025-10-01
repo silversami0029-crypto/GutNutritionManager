@@ -7,6 +7,7 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 import static androidx.room.ForeignKey.CASCADE;
 
+import java.util.Date;
 import java.util.List;
 
 @Entity(tableName = "symptoms",
@@ -24,14 +25,20 @@ public class Symptom {
     public String name;
     public int severity;
 
+    public long timestamp;
+
     public Symptom() {
         // Default constructor required by Room
     }
 @Ignore
-    public Symptom(int logEntryId, String name, int severity) {
+    public Symptom(int logEntryId, String name, int severity,long timestamp) {
         this.logEntryId = logEntryId;
         this.name = name;
         this.severity = severity;
+        this.timestamp = timestamp;
     }
+
+   public int getSeverity () { return severity; }
+   public String getName () { return name; }
 
 }

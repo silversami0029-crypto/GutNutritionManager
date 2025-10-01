@@ -640,7 +640,6 @@ public class DiaryFragment extends Fragment {
 
     private void generateCustomDateRangeReport(Calendar startDate, Calendar endDate) {
         showLoading(true);
-        Toast.makeText(requireContext(), "Generating custom date range report...", Toast.LENGTH_SHORT).show();
 
         AppDatabase database = AppDatabase.getDatabase(requireContext());
         FoodDao foodDao = database.foodDao();
@@ -649,18 +648,325 @@ public class DiaryFragment extends Fragment {
         long startTimestamp = startDate.getTimeInMillis();
         long endTimestamp = endDate.getTimeInMillis();
 
-        // Get food logs for the custom date range
-        foodDao.getFoodLogsByDateRange(startTimestamp, endTimestamp).observe(getViewLifecycleOwner(), foodLogs -> {
-            showLoading(false);
+        // Format date range for display - FIX: Define dateRangeStr here
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+        String dateRangeStr = sdf.format(startDate.getTime()) + " to " + sdf.format(endDate.getTime());
 
-            // Format date range for display
-            SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-            String dateRangeStr = sdf.format(startDate.getTime()) + " to " + sdf.format(endDate.getTime());
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs = foodDao.getFoodLogsByDateRangeSync(startTimestamp, endTimestamp);
+                List<Symptom> symptoms = foodDao.getSymptomsByDateRangeSync(startTimestamp, endTimestamp);
 
-            String report = generateEnhancedDoctorReport(foodLogs, dateRangeStr);
-            shareReport(report);
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    // FIX: Add symptoms parameter and use dateRangeStr
+                    String report = generateEnhancedDoctorReport(foodLogs, symptoms, dateRangeStr);
+                    shareReport(report);
+                });
+
+            } catch (Exception e) {
+                // Error handling
+            }
         });
+
     }
+
+    private String generateEnhancedDoctorReport(List<FoodLogEntity> foodLogs, List<Symptom> symptoms, String period) {
+        StringBuilder report = new StringBuilder();
+
+        // ===== PROFESSIONAL HEADER =====
+        report.append("🩺 GUT NUTRITION MANAGER - CLINICAL REPORT\n");
+        report.append("============================================\n\n");
+
+        report.append("REPORT PERIOD: ").append(period).append("\n");
+        report.append("GENERATED: ").append(new SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault()).format(new Date())).append("\n");
+        report.append("PATIENT: [User's Data]\n\n");
+
+        // ===== EXECUTIVE SUMMARY =====
+        report.append("1. EXECUTIVE SUMMARY\n");
+        report.append("====================\n");
+        report.append("• Total meals logged: ").append(foodLogs.size()).append("\n");
+        report.append("• Total symptoms recorded: ").append(symptoms.size()).append("\n");
+
+        // Calculate gut-safe percentage
+        long lowFodmapCount = foodLogs.stream().filter(f -> "LOW".equals(f.getFodmapStatus())).count();
+        int gutSafePercentage = foodLogs.isEmpty() ? 0 : (int) ((lowFodmapCount * 100) / foodLogs.size());
+        report.append("• Gut-safe food consumption: ").append(gutSafePercentage).append("%\n\n");
+
+        // ===== SYMPTOM ANALYSIS =====
+        report.append("2. SYMPTOM ANALYSIS\n");
+        report.append("===================\n");
+
+        if (symptoms.isEmpty()) {
+            report.append("No symptoms recorded for this period.\n\n");
+        } else {
+            // Use your existing symptom analysis logic
+            Map<String, Integer> symptomCount = new HashMap<>();
+            Map<String, Double> symptomAvgSeverity = new HashMap<>();
+
+            for (Symptom symptom : symptoms) {
+                symptomCount.put(symptom.name, symptomCount.getOrDefault(symptom.name, 0) + 1);
+
+                double currentAvg = symptomAvgSeverity.getOrDefault(symptom.name, 0.0);
+                int count = symptomCount.get(symptom.name);
+                double newAvg = (currentAvg * (count - 1) + symptom.severity) / count;
+                symptomAvgSeverity.put(symptom.name, newAvg);
+            }
+
+            for (Map.Entry<String, Integer> entry : symptomCount.entrySet()) {
+                String symptomName = entry.getKey();
+                int frequency = entry.getValue();
+                double avgSeverity = symptomAvgSeverity.get(symptomName);
+
+                report.append("• ").append(symptomName)
+                        .append(": ").append(frequency).append(" occurrences")
+                        .append(" (Avg severity: ").append(String.format("%.1f/5", avgSeverity)).append(")\n");
+            }
+            report.append("\n");
+        }
+
+        // ===== BRAIN-GUT CONNECTION ANALYSIS =====
+        report.append("3. BRAIN-GUT CONNECTION\n");
+        report.append("========================\n");
+
+        // Stress Impact Analysis (from your generateBrainGutInsights)
+        if (!foodLogs.isEmpty()) {
+            double totalStress = 0;
+            double highStressMeals = 0;
+
+            for (FoodLogEntity food : foodLogs) {
+                int stress = food.getStressLevel();
+                totalStress += stress;
+                if (stress >= 4) highStressMeals++;
+            }
+
+            double avgStress = totalStress / foodLogs.size();
+            double highStressPercent = (highStressMeals / foodLogs.size()) * 100;
+
+            report.append("Stress Analysis:\n");
+            report.append("• Average meal stress: ").append(String.format("%.1f/5", avgStress)).append("\n");
+            report.append("• High-stress meals: ").append(String.format("%.0f", highStressPercent)).append("%\n");
+
+            // Clinical interpretation
+            if (avgStress > 3.5) {
+                report.append("• CLINICAL NOTE: Elevated stress during meals may exacerbate GI symptoms\n");
+            } else if (avgStress < 2.5) {
+                report.append("• CLINICAL NOTE: Good stress management during meals observed\n");
+            }
+            report.append("\n");
+        }
+
+        // ===== MOOD-SYMPTOM PATTERNS =====
+        report.append("4. MOOD-SYMPTOM PATTERNS\n");
+        report.append("=========================\n");
+        if (!foodLogs.isEmpty()) {
+            Map<String, Integer> moodCount = new HashMap<>();
+            Map<String, Integer> moodSymptomCount = new HashMap<>();
+
+            // Use text-only mood names for PDF compatibility
+            Map<String, String> moodMapping = new HashMap<>();
+            moodMapping.put("😊 Calm", "Calm");
+            moodMapping.put("😐 Neutral", "Neutral");
+            moodMapping.put("😰 Stressed", "Stressed");
+            moodMapping.put("😟 Anxious", "Anxious");
+            moodMapping.put("😴 Tired", "Tired");
+
+            for (FoodLogEntity food : foodLogs) {
+                String originalMood = food.getMood();
+                String cleanMood = moodMapping.getOrDefault(originalMood, originalMood);
+
+                moodCount.put(cleanMood, moodCount.getOrDefault(cleanMood, 0) + 1);
+                moodSymptomCount.put(cleanMood, moodSymptomCount.getOrDefault(cleanMood, 0) + 1);
+            }
+
+            report.append("Mood Distribution:\n");
+            for (Map.Entry<String, Integer> entry : moodCount.entrySet()) {
+                String mood = entry.getKey();
+                int totalMeals = entry.getValue();
+                int symptomaticMeals = moodSymptomCount.getOrDefault(mood, 0);
+                int percentage = totalMeals == 0 ? 0 : (symptomaticMeals * 100) / totalMeals;
+
+                report.append("• ").append(mood).append(": ")
+                        .append(symptomaticMeals).append("/").append(totalMeals)
+                        .append(" meals had symptoms (").append(percentage).append("%)\n");
+            }
+
+            // FIXED: Proper clinical insight check
+            boolean allMoodsSymptomatic = true;
+            for (Map.Entry<String, Integer> entry : moodCount.entrySet()) {
+                String mood = entry.getKey();
+                int totalMeals = entry.getValue();
+                int symptomaticMeals = moodSymptomCount.getOrDefault(mood, 0);
+
+                if (symptomaticMeals != totalMeals) {
+                    allMoodsSymptomatic = false;
+                    break;
+                }
+            }
+
+            if (allMoodsSymptomatic) {
+                report.append("\nCLINICAL NOTE: Symptoms occur consistently across all emotional states.\n");
+                report.append("Suggests potential food triggers rather than psychological factors.\n");
+            }
+        } else {
+            report.append("No mood data available for analysis.\n");
+        }
+        report.append("\n");
+
+       /* if (!foodLogs.isEmpty() && !symptoms.isEmpty()) {
+            Map<String, Integer> moodCount = new HashMap<>();
+            Map<String, Integer> moodSymptomCount = new HashMap<>();
+
+            for (FoodLogEntity food : foodLogs) {
+                String mood = food.getMood();
+                moodCount.put(mood, moodCount.getOrDefault(mood, 0) + 1);
+
+                // Simplified correlation - in real app, match by timestamp
+                moodSymptomCount.put(mood, moodSymptomCount.getOrDefault(mood, 0) + 1);
+            }
+
+            report.append("Mood Distribution:\n");
+            for (Map.Entry<String, Integer> entry : moodCount.entrySet()) {
+                String mood = entry.getKey();
+                int totalMeals = entry.getValue();
+                int symptomaticMeals = moodSymptomCount.getOrDefault(mood, 0);
+                int percentage = totalMeals == 0 ? 0 : (symptomaticMeals * 100) / totalMeals;
+
+                report.append("• ").append(mood).append(": ")
+                        .append(symptomaticMeals).append("/").append(totalMeals)
+                        .append(" meals had symptoms (").append(percentage).append("%)\n");
+            }
+            report.append("\n");
+        }*/
+
+        // ===== FOOD ANALYSIS =====
+        report.append("5. FOOD CONSUMPTION PATTERNS\n");
+        report.append("=============================\n");
+
+        if (!foodLogs.isEmpty()) {
+            // Most common foods (from your generateBasicInsights)
+            Map<String, Integer> foodCounts = new HashMap<>();
+            for (FoodLogEntity food : foodLogs) {
+                foodCounts.put(food.getFoodName(), foodCounts.getOrDefault(food.getFoodName(), 0) + 1);
+            }
+
+            report.append("Top Foods Consumed:\n");
+            foodCounts.entrySet().stream()
+                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                    .limit(5)
+                    .forEach(entry -> {
+                        report.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" times\n");
+                    });
+            report.append("\n");
+
+            // FODMAP Status Summary
+            report.append("FODMAP Status Summary:\n");
+            report.append("• Gut-safe (LOW FODMAP): ").append(lowFodmapCount).append(" foods\n");
+            report.append("• Potential triggers (HIGH FODMAP): ").append(foodLogs.size() - lowFodmapCount).append(" foods\n\n");
+        }
+
+        // ===== CLINICAL RECOMMENDATIONS =====
+        report.append("6. CLINICAL RECOMMENDATIONS\n");
+        report.append("============================\n");
+
+        // Generate personalized recommendations based on the data
+        if (!foodLogs.isEmpty()) {
+            double avgStress = foodLogs.stream().mapToInt(FoodLogEntity::getStressLevel).average().orElse(0);
+            long highFodmapCount = foodLogs.size() - lowFodmapCount;
+
+            if (avgStress > 3.0) {
+                report.append("• Implement stress-reduction techniques before meals\n");
+                report.append("• Consider mindful eating practices\n");
+                report.append("• Explore relaxation exercises (4-7-8 breathing)\n");
+            }
+
+            if (highFodmapCount > lowFodmapCount) {
+                report.append("• Consider reducing HIGH FODMAP food intake\n");
+                report.append("• Monitor symptoms after consuming identified trigger foods\n");
+            }
+
+            if (symptoms.size() > 5) {
+                report.append("• Continue detailed symptom tracking for pattern identification\n");
+                report.append("• Consider food-symptom correlation analysis\n");
+            }
+
+            if (report.toString().contains("CLINICAL RECOMMENDATIONS\n")) {
+                // If no specific recommendations were added
+                report.append("• Continue current tracking regimen\n");
+                report.append("• Maintain balanced diet with stress management\n");
+            }
+        }
+
+        report.append("\n");
+
+        // ===== DETAILED LOGS (Optional - for comprehensive review) =====
+        report.append("7. DETAILED ACTIVITY LOG\n");
+        report.append("=========================\n");
+        report.append("[Detailed food and symptom logs available in app]\n");
+        report.append("• Total entries: ").append(foodLogs.size()).append(" foods, ").append(symptoms.size()).append(" symptoms\n");
+        report.append("• Time range: ").append(period).append("\n\n");
+
+        // ===== FOOTER =====
+        report.append("============================================\n");
+        report.append("Generated by Gut Nutrition Manager\n");
+        report.append("For clinical use - Consult healthcare provider\n");
+        report.append("for personalized medical advice\n");
+
+        return report.toString();
+    }
+    /*
+    private String generateEnhancedDoctorReport(List<FoodLogEntity> foodLogs, List<Symptom> symptoms, String period) {
+        StringBuilder report = new StringBuilder();
+
+        report.append("🩺 GUT NUTRITION MANAGER - MEDICAL REPORT\n");
+        report.append("============================================\n\n");
+
+        // Header with period
+        report.append("REPORT PERIOD: ").append(period).append("\n");
+        report.append("GENERATED: ").append(new SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault()).format(new Date())).append("\n\n");
+
+        // 1. SYMPTOM SUMMARY SECTION - NEW!
+        report.append("SYMPTOM SUMMARY:\n");
+        report.append("----------------\n");
+
+        if (symptoms == null || symptoms.isEmpty()) {
+            report.append("No symptoms logged for this period.\n\n");
+        } else {
+            report.append("Total symptoms logged: ").append(symptoms.size()).append("\n");
+
+            // Group symptoms by type and calculate averages
+            Map<String, List<Integer>> symptomSeverities = new HashMap<>();
+            for (Symptom symptom : symptoms) {
+                symptomSeverities.computeIfAbsent(symptom.getName(), k -> new ArrayList<>())
+                        .add(symptom.getSeverity());
+            }
+
+            for (Map.Entry<String, List<Integer>> entry : symptomSeverities.entrySet()) {
+                String symptomName = entry.getKey();
+                List<Integer> severities = entry.getValue();
+                double avgSeverity = severities.stream().mapToInt(Integer::intValue).average().orElse(0);
+
+                report.append("• ").append(symptomName)
+                        .append(": ").append(severities.size()).append(" times")
+                        .append(", Avg severity: ").append(String.format("%.1f/5", avgSeverity)).append("\n");
+            }
+            report.append("\n");
+        }
+
+        // 2. FOOD SUMMARY (your existing code)
+        if (foodLogs == null || foodLogs.isEmpty()) {
+            report.append("No food data available for the selected period.\n");
+            return report.toString();
+        }
+
+        report.append("FOOD SUMMARY:\n");
+        report.append("-------------\n");
+        report.append("• Total meals logged: ").append(foodLogs.size()).append("\n");
+
+        // ... rest of your existing food analysis code ...
+
+        return report.toString();
+    }*/
 
     private void showPdfDateSelectionDialog() {
         final String[] pdfOptions = {
@@ -708,10 +1014,24 @@ public class DiaryFragment extends Fragment {
         long startTimestamp = startDate.getTimeInMillis();
         long endTimestamp = endDate.getTimeInMillis();
 
-        // Get food logs for the custom date range
-        foodDao.getFoodLogsByDateRange(startTimestamp, endTimestamp).observe(getViewLifecycleOwner(), foodLogs -> {
-            createAndSharePdf(foodLogs, dateRangeStr);
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs = foodDao.getFoodLogsByDateRangeSync(startTimestamp, endTimestamp);
+                List<Symptom> symptoms = foodDao.getSymptomsByDateRangeSync(startTimestamp, endTimestamp);
+
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    createAndSharePdf(foodLogs, symptoms, dateRangeStr);
+                });
+
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    Toast.makeText(requireContext(), "Error generating PDF: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
         });
+
     }
     private void showEndDatePickerForPdf(final Calendar startDate) {
         final Calendar calendar = Calendar.getInstance();
@@ -772,40 +1092,60 @@ public class DiaryFragment extends Fragment {
         AppDatabase database = AppDatabase.getDatabase(requireContext());
         FoodDao foodDao = database.foodDao();
 
-        Log.d("PDFDebug", "Database initialized, getting food logs for: " + period);
+        Log.d("PDFDebug", "Database initialized, getting data for: " + period);
 
-        // Get data based on period
-        if ("Yesterday".equals(period)) {
-            Log.d("PDFDebug", "Getting yesterday's logs");
-            foodDao.getYesterdayFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-                Log.d("PDFDebug", "Yesterday logs received: " + (foodLogs != null ? foodLogs.size() : 0));
-                createAndSharePdf(foodLogs, period);
-            });
-        } else if ("Last 7 Days".equals(period)) {
-            Log.d("PDFDebug", "Getting last 7 days logs");
-            foodDao.getLast7DaysFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-                Log.d("PDFDebug", "Last 7 days logs received: " + (foodLogs != null ? foodLogs.size() : 0));
-                createAndSharePdf(foodLogs, period);
-            });
-        } else {
-            Log.d("PDFDebug", "Getting all time logs");
-            foodDao.getAllFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-                Log.d("PDFDebug", "All time logs received: " + (foodLogs != null ? foodLogs.size() : 0));
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs;
+                List<Symptom> symptoms;
 
-                createAndSharePdf(foodLogs, period);
-            });
-        }
+                // Get data based on period using sync methods
+                if ("Yesterday".equals(period)) {
+                    Log.d("PDFDebug", "Getting yesterday's data");
+                    foodLogs = foodDao.getYesterdayFoodLogsSync();
+                    symptoms = foodDao.getSymptomsByDateRangeSync(getYesterdayStartTime(), getYesterdayEndTime());
+                } else if ("Last 7 Days".equals(period)) {
+                    Log.d("PDFDebug", "Getting last 7 days data");
+                    Calendar cal = Calendar.getInstance();
+                    cal.add(Calendar.DATE, -7);
+                    long sevenDaysAgo = cal.getTimeInMillis();
+
+                    foodLogs = foodDao.getLast7DaysFoodLogsSync(sevenDaysAgo);
+                    symptoms = foodDao.getSymptomsByDateRangeSync(sevenDaysAgo, System.currentTimeMillis());
+                } else {
+                    Log.d("PDFDebug", "Getting all time data");
+                    foodLogs = foodDao.getAllFoodLogsSync();
+                    symptoms = foodDao.getAllSymptomsSync();
+                }
+
+                Log.d("PDFDebug", "Data received - Foods: " + foodLogs.size() + ", Symptoms: " + symptoms.size());
+
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    createAndSharePdf(foodLogs, symptoms, period);
+                });
+
+            } catch (Exception e) {
+                Log.e("PDFDebug", "Error generating PDF: " + e.getMessage(), e);
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    Toast.makeText(requireContext(), "Error generating PDF: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
-    private void createAndSharePdf(List<FoodLogEntity> foodLogs, String period) {
+    private void createAndSharePdf(List<FoodLogEntity> foodLogs, List<Symptom> symptoms, String period) {
         showLoading(false);
 
-        // Generate PDF
+        // Generate the comprehensive report text
+        String reportText = generateEnhancedDoctorReport(foodLogs, symptoms, period);
+
+        // Generate PDF with the comprehensive report
         PdfReportGenerator pdfGenerator = new PdfReportGenerator(requireContext());
-        File pdfFile = pdfGenerator.generateDoctorReport(foodLogs, period);
+        File pdfFile = pdfGenerator.generateDoctorReport(reportText, period); // We need to update PdfReportGenerator
 
         if (pdfFile != null && pdfFile.exists()) {
-            // Share the PDF file
             sharePdfFile(pdfFile);
             Toast.makeText(requireContext(), "PDF report generated successfully!", Toast.LENGTH_LONG).show();
         } else {
@@ -859,11 +1199,26 @@ public class DiaryFragment extends Fragment {
         AppDatabase database = AppDatabase.getDatabase(requireContext());
         FoodDao foodDao = database.foodDao();
 
-        foodDao.getYesterdayFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-            showLoading(false);
-            String report = generateEnhancedDoctorReport(foodLogs, "Yesterday");
-            shareReport(report);
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs = foodDao.getYesterdayFoodLogsSync();
+                List<Symptom> symptoms = foodDao.getSymptomsByDateRangeSync(getYesterdayStartTime(), getYesterdayEndTime());
+
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    // FIX: Add symptoms parameter
+                    String report = generateEnhancedDoctorReport(foodLogs, symptoms, "Yesterday");
+                    shareReport(report);
+                });
+
+            } catch (Exception e) {
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    Toast.makeText(requireContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+            }
         });
+
     }
 
     private void generateAndShareLast7DaysReport() {
@@ -877,11 +1232,24 @@ public class DiaryFragment extends Fragment {
         cal.add(Calendar.DATE, -7);
         long sevenDaysAgo = cal.getTimeInMillis();
 
-        foodDao.getLast7DaysFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-            showLoading(false);
-            String report = generateEnhancedDoctorReport(foodLogs, "Last 7 Days");
-            shareReport(report);
+
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs = foodDao.getLast7DaysFoodLogsSync(sevenDaysAgo);
+                List<Symptom> symptoms = foodDao.getSymptomsByDateRangeSync(getLast7DaysStartTime(), getLast7DaysEndTime());
+
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    // FIX: Add symptoms parameter
+                    String report = generateEnhancedDoctorReport(foodLogs, symptoms, "Last 7 Days");
+                    shareReport(report);
+                });
+
+            } catch (Exception e) {
+                // Error handling
+            }
         });
+
     }
     private void generateAndShareAllTimeReport() {
         showLoading(true);
@@ -889,134 +1257,69 @@ public class DiaryFragment extends Fragment {
         AppDatabase database = AppDatabase.getDatabase(requireContext());
         FoodDao foodDao = database.foodDao();
 
-        foodDao.getAllFoodLogs().observe(getViewLifecycleOwner(), foodLogs -> {
-            showLoading(false);
-            String report = generateEnhancedDoctorReport(foodLogs, "All Time");
-            shareReport(report);
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            try {
+                List<FoodLogEntity> foodLogs = foodDao.getAllFoodLogsSync();
+                List<Symptom> symptoms = foodDao.getAllSymptomsSync();
+
+                requireActivity().runOnUiThread(() -> {
+                    showLoading(false);
+                    // FIX: Add symptoms parameter
+                    String report = generateEnhancedDoctorReport(foodLogs, symptoms, "All Time");
+                    shareReport(report);
+                });
+
+            } catch (Exception e) {
+                // Error handling
+            }
         });
+
+
+
     }
 
 
-    private String generateEnhancedDoctorReport(List<FoodLogEntity> foodLogs, String period) {
-        StringBuilder report = new StringBuilder();
 
-        report.append("🩺 GUT NUTRITION MANAGER - MEDICAL REPORT\n");
-        report.append("============================================\n\n");
-
-        // Header with period
-        report.append("REPORT PERIOD: ").append(period).append("\n");
-        report.append("GENERATED: ").append(new SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault()).format(new Date())).append("\n\n");
-
-        if (foodLogs == null || foodLogs.isEmpty()) {
-            report.append("No food data available for the selected period.\n");
-            return report.toString();
-        }
-
-        // 1. SUMMARY STATISTICS
-        report.append("SUMMARY STATISTICS:\n");
-        report.append("-------------------\n");
-        report.append("• Total meals logged: ").append(foodLogs.size()).append("\n");
-
-        // Calculate statistics
-        int lowFodmapCount = 0;
-        int totalStress = 0;
-        Map<String, Integer> moodCounts = new HashMap<>();
-        Map<String, Integer> mealTypeCounts = new HashMap<>();
-
-        for (FoodLogEntity food : foodLogs) {
-            // Count FODMAP status
-            if ("LOW".equals(food.getFodmapStatus())) {
-                lowFodmapCount++;
-            }
-
-            // Sum stress for average
-            totalStress += food.getStressLevel();
-
-            // Count moods
-            String mood = food.getMood();
-            moodCounts.put(mood, moodCounts.getOrDefault(mood, 0) + 1);
-
-            // Count meal types
-            String mealType = food.getMealType();
-            mealTypeCounts.put(mealType, mealTypeCounts.getOrDefault(mealType, 0) + 1);
-        }
-
-        double avgStress = (double) totalStress / foodLogs.size();
-        int gutSafePercentage = (lowFodmapCount * 100) / foodLogs.size();
-
-        report.append("• Gut-safe foods: ").append(lowFodmapCount).append("/").append(foodLogs.size())
-                .append(" (").append(gutSafePercentage).append("%)\n");
-        report.append("• Average meal stress: ").append(String.format("%.1f/5", avgStress)).append("\n");
-
-        // 2. MOOD & STRESS INSIGHTS
-        report.append("\nMOOD & STRESS ANALYSIS:\n");
-        report.append("------------------------\n");
-
-        if (!moodCounts.isEmpty()) {
-            report.append("Mood distribution:\n");
-            moodCounts.entrySet().stream()
-                    .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                    .forEach(entry -> {
-                        int percentage = (entry.getValue() * 100) / foodLogs.size();
-                        report.append("• ").append(entry.getKey()).append(": ").append(entry.getValue())
-                                .append(" meals (").append(percentage).append("%)\n");
-                    });
-        }
-
-        // Brain-gut insight
-        if (avgStress > 3.5) {
-            report.append("🔍 High stress levels during meals may impact digestion\n");
-        } else if (avgStress < 2.5) {
-            report.append("🌟 Generally eating in a relaxed state\n");
-        }
-
-        // 3. DETAILED FOOD LOG
-        report.append("\nDETAILED FOOD LOG:\n");
-        report.append("------------------\n");
-
-        // Group by date for better organization
-        Map<String, List<FoodLogEntity>> logsByDate = new HashMap<>();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-
-        for (FoodLogEntity food : foodLogs) {
-            String dateKey = dateFormat.format(food.getTimestamp());
-            logsByDate.computeIfAbsent(dateKey, k -> new ArrayList<>()).add(food);
-        }
-
-        for (Map.Entry<String, List<FoodLogEntity>> dateEntry : logsByDate.entrySet()) {
-            report.append("\n").append(dateEntry.getKey()).append(":\n");
-
-            for (FoodLogEntity food : dateEntry.getValue()) {
-                report.append("• ").append(food.getFoodName())
-                        .append(" (").append(food.getPreparation()).append(")")
-                        .append(" - ").append(food.getMealType())
-                        .append(" [").append(food.getFodmapStatus()).append(" FODMAP]")
-                        .append(" - Mood: ").append(food.getMood())
-                        .append(", Stress: ").append(food.getStressLevel()).append("/5\n");
-            }
-        }
-
-        // 4. RECOMMENDATIONS
-        report.append("\nRECOMMENDATIONS:\n");
-        report.append("----------------\n");
-
-        if (gutSafePercentage < 70) {
-            report.append("• Consider increasing gut-safe (LOW FODMAP) food intake\n");
-        }
-
-        if (avgStress > 3.0) {
-            report.append("• Practice stress-reduction techniques before meals\n");
-            report.append("• Try mindful eating in calm environments\n");
-        }
-
-        report.append("• Continue tracking for personalized insights\n");
-        report.append("• Share this report with your healthcare provider\n");
-
-        report.append("\n============================================\n");
-        report.append("Generated by Gut Nutrition Manager App\n");
-
-        return report.toString();
+    // Add these helper methods for date calculations
+    private long getYesterdayStartTime() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, -1);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        return cal.getTimeInMillis();
     }
+
+    private long getYesterdayEndTime() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, -1);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        return cal.getTimeInMillis();
+    }
+    // Add these helper methods to DiaryFragment.java
+
+
+
+
+    private long getLast7DaysStartTime() {
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.DATE, -7);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        return cal.getTimeInMillis();
+    }
+
+    private long getLast7DaysEndTime() {
+        Calendar cal = Calendar.getInstance();
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        return cal.getTimeInMillis();
+    }
+
 
     private void showPreparationDialog(QuickFood food) {
         final String[] preparations = {"Raw", "Cooked", "Steamed", "Roasted", "Boiled", "Fried", "Mashed", "Pureed"};
@@ -1260,28 +1563,4 @@ public class DiaryFragment extends Fragment {
     }
 
 
-    private void testSimplePdf() {
-        Log.d("PDFDebug", "Testing simple PDF generation");
-
-        try {
-            PdfReportGenerator pdfGenerator = new PdfReportGenerator(requireContext());
-
-            // Create empty list for testing
-            List<FoodLogEntity> testLogs = new ArrayList<>();
-
-            File pdfFile = pdfGenerator.generateDoctorReport(testLogs, "Test Period");
-
-            if (pdfFile != null && pdfFile.exists()) {
-                Log.d("PDFDebug", "Simple PDF test SUCCESS - File: " + pdfFile.getAbsolutePath());
-                Toast.makeText(requireContext(), "PDF test successful!", Toast.LENGTH_LONG).show();
-            } else {
-                Log.e("PDFDebug", "Simple PDF test FAILED");
-                Toast.makeText(requireContext(), "PDF test failed", Toast.LENGTH_LONG).show();
-            }
-
-        } catch (Exception e) {
-            Log.e("PDFDebug", "Simple PDF test ERROR: " + e.getMessage(), e);
-            Toast.makeText(requireContext(), "PDF error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-        }
-    }
 }

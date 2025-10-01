@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-@Database(entities = {LogEntry.class, Food.class, FoodAdvice.class, USDAFoodMapping.class, FoodLogEntity.class, Symptom.class},
-        version = 18,
+@Database(entities = {LogEntry.class, Food.class, FoodAdvice.class, USDAFoodMapping.class, FoodLogEntity.class, Symptom.class, Recipe.class},
+        version = 20,
         exportSchema = false)
 
 @TypeConverters({Converters.class})

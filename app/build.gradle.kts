@@ -92,5 +92,9 @@ dependencies {
     implementation("com.itextpdf:itext7-core:7.2.5")
     implementation("androidx.core:core-ktx:1.12.0")
 
+    //json dependecies
+
+    implementation("com.google.code.gson:gson:2.10.1")
+
 
 }

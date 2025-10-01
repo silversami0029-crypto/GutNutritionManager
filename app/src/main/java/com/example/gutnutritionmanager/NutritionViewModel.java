@@ -1,6 +1,7 @@
 package com.example.gutnutritionmanager;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -508,7 +509,52 @@ public class NutritionViewModel extends AndroidViewModel {
         return searchUSDAFoodsWithFilter(query, fodmapOnly);
     }
 
+    public void insertLogEntryWithSymptom(LogEntry logEntry, String symptomName, int severity) {
+        databaseWriteExecutor.execute(() -> {
+            try {
+                // First insert the log entry and get its ID
+                long logEntryId = logEntryDao.insert(logEntry);
+                Log.d("NutritionViewModel", "Inserted log entry with ID: " + logEntryId);
 
+                // Then create and insert symptom linked to this log entry
+                Symptom symptom = new Symptom();
+                symptom.logEntryId = (int) logEntryId; // Link to the log entry
+                symptom.name = symptomName;
+                symptom.severity = severity;
+                symptom.timestamp = System.currentTimeMillis();
+
+                logEntryDao.insertSymptom(symptom);
+                Log.d("NutritionViewModel", "Inserted symptom: " + symptomName + " linked to log entry: " + logEntryId);
+
+            } catch (Exception e) {
+                Log.e("NutritionViewModel", "Error inserting symptom with log entry: " + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public void debugSymptoms() {
+        databaseWriteExecutor.execute(() -> {
+            try {
+                // Check all symptoms in database
+                List<Symptom> allSymptoms = logEntryDao.getAllSymptomsDirect();
+                Log.d("DEBUG", "Total symptoms in DB: " + allSymptoms.size());
+
+                for (Symptom symptom : allSymptoms) {
+                    Log.d("DEBUG", "Symptom: " + symptom.name +
+                            ", Severity: " + symptom.severity +
+                            ", LogEntryId: " + symptom.logEntryId);
+                }
+
+                // Check log entries with symptoms
+                List<LogEntryWithSymptoms> entriesWithSymptoms = logEntryDao.getAllEntriesWithSymptomsDirect();
+                Log.d("DEBUG", "Log entries with symptoms: " + entriesWithSymptoms.size());
+
+            } catch (Exception e) {
+                Log.e("DEBUG", "Error debugging symptoms: " + e.getMessage());
+            }
+        });
+    }
     public LiveData<List<Food>> searchUSDAFoodsWithFilter(String query, boolean fodmapOnly) {
         MutableLiveData<List<Food>> result = new MutableLiveData<>();
 
@@ -532,6 +578,77 @@ public class NutritionViewModel extends AndroidViewModel {
 
         return result;
     }
+
+
+    // Recipe methods
+    public LiveData<List<Recipe>> getAllRecipes() {
+        return foodDao.getAllRecipes();
+    }
+
+    public LiveData<List<Recipe>> getLowFodmapRecipes() {
+        return foodDao.getLowFodmapRecipes();
+    }
+
+    public LiveData<List<Recipe>> getRecipesByCategory(String category) {
+        return foodDao.getRecipesByCategory(category);
+    }
+
+    public LiveData<List<Recipe>> getFavoriteRecipes() {
+        return foodDao.getFavoriteRecipes();
+    }
+
+    public LiveData<List<Recipe>> searchRecipes(String query) {
+        return foodDao.searchRecipes(query);
+    }
+
+    public void setRecipeFavorite(int recipeId, boolean isFavorite) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            foodDao.setRecipeFavorite(recipeId, isFavorite);
+        });
+    }
+
+    public void insertRecipe(Recipe recipe) {
+        AppDatabase.databaseWriteExecutor.execute(() -> {
+            foodDao.insertRecipe(recipe);
+        });
+    }
+
+    // Add this method to your NutritionViewModel class
+    public void loadRecipesFromJson(Context context) {
+        databaseWriteExecutor.execute(() -> {
+            try {
+                // Check if recipes already exist to avoid duplicates
+                int existingRecipeCount = foodDao.getRecipeCount();
+
+                if (existingRecipeCount == 0) {
+                    Log.d("NutritionViewModel", "Loading recipes from JSON...");
+                    RecipeLoader.loadRecipesIntoDatabase(context, AppDatabase.getDatabase(application));
+                    Log.d("NutritionViewModel", "Recipes loaded successfully from JSON");
+                } else {
+                    Log.d("NutritionViewModel", "Recipes already exist in database: " + existingRecipeCount);
+                }
+            } catch (Exception e) {
+                Log.e("NutritionViewModel", "Error loading recipes from JSON: " + e.getMessage());
+            }
+        });
+    }
+
+    // Add this method to check if database is empty
+    public LiveData<Integer> getRecipeCount() {
+        MutableLiveData<Integer> result = new MutableLiveData<>();
+        databaseWriteExecutor.execute(() -> {
+            int count = foodDao.getRecipeCount();
+            result.postValue(count);
+        });
+        return result;
+    }
+
+    // Add these methods to NutritionViewModel.java
+    public LiveData<List<Symptom>> getAllSymptoms() {
+        return logEntryDao.getAllSymptoms();
+    }
+
+
 
 
 

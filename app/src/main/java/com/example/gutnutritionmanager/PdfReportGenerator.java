@@ -1,232 +1,290 @@
 package com.example.gutnutritionmanager;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.pdf.PdfDocument;
 import android.os.Environment;
-import com.itextpdf.io.font.PdfEncodings;
-import com.itextpdf.kernel.font.PdfFont;
-import com.itextpdf.kernel.font.PdfFontFactory;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.layout.properties.UnitValue;
-
+import android.util.Log;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class PdfReportGenerator {
 
     private Context context;
-    private PdfFont font;
 
     public PdfReportGenerator(Context context) {
         this.context = context;
-        try {
-            // You can use system font or add custom fonts
-            this.font = PdfFontFactory.createFont("Helvetica");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
-
-    public File generateDoctorReport(List<FoodLogEntity> foodLogs, String period) {
+    public File generateDoctorReport(String reportText, String period) {
         try {
-            // Create file name with timestamp
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-            String fileName = "Gut_Report_" + timeStamp + ".pdf";
+            // Create PDF document using Android's PdfDocument
+            PdfDocument document = new PdfDocument();
 
-            // ✅ USE APP-SPECIFIC STORAGE (No permissions needed)
+            // Create page info for A4 size (595 x 842 points)
+            PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+            PdfDocument.Page page = document.startPage(pageInfo);
+
+            Canvas canvas = page.getCanvas();
+            Paint paint = new Paint();
+            Paint titlePaint = new Paint();
+
+            // Set up paints
+            paint.setColor(Color.BLACK);
+            paint.setTextSize(10);
+            paint.setAntiAlias(true);
+
+            titlePaint.setColor(Color.BLACK);
+            titlePaint.setTextSize(14);
+            titlePaint.setFakeBoldText(true);
+            titlePaint.setAntiAlias(true);
+
+            // Draw title
+            String title = "Gut Nutrition Manager - Clinical Report";
+            canvas.drawText(title, 50, 50, titlePaint);
+            canvas.drawText("Period: " + period, 50, 70, paint);
+
+            // Draw generation date
+            String date = "Generated: " + new java.text.SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", java.util.Locale.getDefault()).format(new java.util.Date());
+            canvas.drawText(date, 50, 90, paint);
+
+            // Draw report text with proper line wrapping
+            int yPosition = 120;
+            int margin = 50;
+            int pageWidth = 595 - (2 * margin);
+
+            String[] lines = reportText.split("\n");
+
+            for (String line : lines) {
+                // Skip empty lines
+                if (line.trim().isEmpty()) {
+                    yPosition += 5; // Small gap for empty lines
+                    continue;
+                }
+
+                // Check if this line contains bullet points with emojis (mood lines)
+                boolean isMoodLine = line.trim().startsWith("•") &&
+                        (line.contains("😊") || line.contains("😐") ||
+                                line.contains("😰") || line.contains("😟") ||
+                                line.contains("😴"));
+
+                // Handle line wrapping
+                if (paint.measureText(line) > pageWidth && !isMoodLine) {
+                    // Split long lines (but not mood lines)
+                    List<String> wrappedLines = wrapText(line, paint, pageWidth);
+                    for (String wrappedLine : wrappedLines) {
+                        if (yPosition > 800) { // New page needed
+                            document.finishPage(page);
+                            pageInfo = new PdfDocument.PageInfo.Builder(595, 842, document.getPages().size() + 1).create();
+                            page = document.startPage(pageInfo);
+                            canvas = page.getCanvas();
+                            yPosition = 50;
+
+                            // Redraw title on new page
+                            canvas.drawText(title + " (cont.)", 50, 50, titlePaint);
+                        }
+                        canvas.drawText(wrappedLine, margin, yPosition, paint);
+                        yPosition += 15;
+                    }
+                } else {
+                    // For mood lines or short lines, don't wrap
+                    if (yPosition > 800) { // New page needed
+                        document.finishPage(page);
+                        pageInfo = new PdfDocument.PageInfo.Builder(595, 842, document.getPages().size() + 1).create();
+                        page = document.startPage(pageInfo);
+                        canvas = page.getCanvas();
+                        yPosition = 50;
+
+                        // Redraw title on new page
+                        canvas.drawText(title + " (cont.)", 50, 50, titlePaint);
+                    }
+
+                    // Draw the line as-is (mood lines will keep their emojis intact)
+                    canvas.drawText(line, margin, yPosition, paint);
+                    yPosition += 15;
+                }
+            }
+
+            document.finishPage(page);
+
+            // Save the document
+            String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(new java.util.Date());
+            String fileName = "Doctor_Report_" + timeStamp + ".pdf";
+
             File appSpecificDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
             if (appSpecificDir == null) {
-                // Fallback to internal storage
                 appSpecificDir = context.getFilesDir();
             }
 
             File file = new File(appSpecificDir, fileName);
-
-            // Initialize PDF writer and document
-            PdfWriter writer = new PdfWriter(file);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-
-            // Set font
-            if (font != null) {
-                document.setFont(font);
-            }
-
-            // Add content to PDF
-            addPdfContent(document, foodLogs, period);
-
-            // Close document
+            FileOutputStream fos = new FileOutputStream(file);
+            document.writeTo(fos);
             document.close();
+            fos.close();
 
+            Log.d("PDFGenerator", "PDF created successfully: " + file.getAbsolutePath());
             return file;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e("PDFGenerator", "Error creating PDF: " + e.getMessage(), e);
             return null;
         }
     }
+    // Method to generate PDF from pre-generated report text
+    /*public File generateDoctorReport(String reportText, String period) {
+        try {
+            // Create PDF document using Android's PdfDocument
+            PdfDocument document = new PdfDocument();
 
-    private void addPdfContent(Document document, List<FoodLogEntity> foodLogs, String period) {
-        // 1. TITLE
-        Paragraph title = new Paragraph("GUT NUTRITION MANAGER - MEDICAL REPORT")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setBold()
-                .setFontSize(16)
-                .setMarginBottom(20);
-        document.add(title);
+            // Create page info for A4 size (595 x 842 points)
+            PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+            PdfDocument.Page page = document.startPage(pageInfo);
 
-        // 2. REPORT INFO
-        Paragraph periodInfo = new Paragraph("Report Period: " + period)
-                .setFontSize(12)
-                .setMarginBottom(5);
-        document.add(periodInfo);
+            Canvas canvas = page.getCanvas();
+            Paint paint = new Paint();
+            Paint titlePaint = new Paint();
 
-        String generatedTime = new SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault()).format(new Date());
-        Paragraph dateInfo = new Paragraph("Generated: " + generatedTime)
-                .setFontSize(12)
-                .setMarginBottom(20);
-        document.add(dateInfo);
+            // Set up paints
+            paint.setColor(Color.BLACK);
+            paint.setTextSize(10);
+            paint.setAntiAlias(true);
 
-        // 3. SUMMARY TABLE
-        if (foodLogs != null && !foodLogs.isEmpty()) {
-            addSummarySection(document, foodLogs);
-            addDetailedLogsSection(document, foodLogs);
-            addRecommendationsSection(document, foodLogs);
-        } else {
-            Paragraph noData = new Paragraph("No food data available for the selected period.")
-                    .setItalic()
-                    .setMarginBottom(10);
-            document.add(noData);
-        }
+            titlePaint.setColor(Color.BLACK);
+            titlePaint.setTextSize(14);
+            titlePaint.setFakeBoldText(true);
+            titlePaint.setAntiAlias(true);
 
-        // 4. FOOTER
-        Paragraph footer = new Paragraph("Generated by Gut Nutrition Manager App - Confidential Medical Information")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(8)
-                .setItalic()
-                .setMarginTop(20);
-        document.add(footer);
-    }
+            // Draw title
+            String title = "Gut Nutrition Manager - Clinical Report";
+            canvas.drawText(title, 50, 50, titlePaint);
+            canvas.drawText("Period: " + period, 50, 70, paint);
 
-    private void addSummarySection(Document document, List<FoodLogEntity> foodLogs) {
-        Paragraph sectionTitle = new Paragraph("SUMMARY STATISTICS")
-                .setBold()
-                .setFontSize(14)
-                .setMarginBottom(10);
-        document.add(sectionTitle);
+            // Draw generation date
+            String date = "Generated: " + new java.text.SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", java.util.Locale.getDefault()).format(new java.util.Date());
+            canvas.drawText(date, 50, 90, paint);
 
-        // Calculate statistics
-        int totalMeals = foodLogs.size();
-        int lowFodmapCount = 0;
-        int totalStress = 0;
+            // Draw report text with proper line wrapping
+            int yPosition = 120;
+            int margin = 50;
+            int pageWidth = 595 - (2 * margin);
 
-        for (FoodLogEntity food : foodLogs) {
-            if ("LOW".equals(food.getFodmapStatus())) {
-                lowFodmapCount++;
+            String[] lines = reportText.split("\n");
+
+            for (String line : lines) {
+                // Skip empty lines
+                if (line.trim().isEmpty()) {
+                    yPosition += 5; // Small gap for empty lines
+                    continue;
+                }
+
+                // Handle line wrapping for long text
+                if (paint.measureText(line) > pageWidth) {
+                    // Split long lines
+                    List<String> wrappedLines = wrapText(line, paint, pageWidth);
+                    for (String wrappedLine : wrappedLines) {
+
+                        if (yPosition > 800) { // New page needed
+                            document.finishPage(page);
+                            pageInfo = new PdfDocument.PageInfo.Builder(595, 842, document.getPages().size() + 1).create();
+                            page = document.startPage(pageInfo);
+                            canvas = page.getCanvas();
+                            yPosition = 50;
+
+                            // Redraw title on new page
+                            canvas.drawText(title + " (cont.)", 50, 50, titlePaint);
+                        }
+                        canvas.drawText(wrappedLine, margin, yPosition, paint);
+                        yPosition += 15;
+                    }
+                } else {
+                    if (yPosition > 800) { // New page needed
+                        document.finishPage(page);
+                        pageInfo = new PdfDocument.PageInfo.Builder(595, 842, document.getPages().size() + 1).create();
+                        page = document.startPage(pageInfo);
+                        canvas = page.getCanvas();
+                        yPosition = 50;
+
+                        // Redraw title on new page
+                        canvas.drawText(title + " (cont.)", 50, 50, titlePaint);
+                    }
+                    canvas.drawText(line, margin, yPosition, paint);
+                    yPosition += 15;
+                }
             }
-            totalStress += food.getStressLevel();
+
+            document.finishPage(page);
+
+            // Save the document
+            String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(new java.util.Date());
+            String fileName = "Doctor_Report_" + timeStamp + ".pdf";
+
+            File appSpecificDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+            if (appSpecificDir == null) {
+                appSpecificDir = context.getFilesDir();
+            }
+
+            File file = new File(appSpecificDir, fileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            document.writeTo(fos);
+            document.close();
+            fos.close();
+
+            Log.d("PDFGenerator", "PDF created successfully: " + file.getAbsolutePath());
+            return file;
+
+        } catch (Exception e) {
+            Log.e("PDFGenerator", "Error creating PDF: " + e.getMessage(), e);
+            return null;
+        }
+    }*/
+
+    // Helper method for text wrapping
+    private List<String> wrapText(String text, Paint paint, int maxWidth) {
+        List<String> lines = new ArrayList<>();
+
+        // Handle very long words
+        if (paint.measureText(text) <= maxWidth) {
+            lines.add(text);
+            return lines;
         }
 
-        double avgStress = (double) totalStress / totalMeals;
-        int gutSafePercentage = (lowFodmapCount * 100) / totalMeals;
+        String[] words = text.split(" ");
+        StringBuilder currentLine = new StringBuilder();
 
-        // Create summary table
-        float[] columnWidths = {70, 30};
-        Table table = new Table(UnitValue.createPercentArray(columnWidths));
+        for (String word : words) {
+            String testLine = currentLine.length() == 0 ? word : currentLine + " " + word;
 
-        table.addCell(createCell("Total meals logged:", true));
-        table.addCell(createCell(String.valueOf(totalMeals), false));
+            if (paint.measureText(testLine) < maxWidth) {
+                currentLine.append(currentLine.length() == 0 ? word : " " + word);
+            } else {
+                if (currentLine.length() > 0) {
+                    lines.add(currentLine.toString());
+                    currentLine = new StringBuilder(word);
+                } else {
+                    // Single word is too long - break it
+                    while (paint.measureText(word) > maxWidth) {
+                        int breakIndex = word.length() * maxWidth / (int)paint.measureText(word);
+                        lines.add(word.substring(0, breakIndex));
+                        word = word.substring(breakIndex);
+                    }
+                    if (!word.isEmpty()) {
+                        currentLine.append(word);
+                    }
+                }
+            }
+        }
 
-        table.addCell(createCell("Gut-safe foods:", true));
-        table.addCell(createCell(lowFodmapCount + "/" + totalMeals + " (" + gutSafePercentage + "%)", false));
+        if (currentLine.length() > 0) {
+            lines.add(currentLine.toString());
+        }
 
-        table.addCell(createCell("Average stress level:", true));
-        table.addCell(createCell(String.format("%.1f/5", avgStress), false));
-
-        document.add(table);
-        document.add(new Paragraph("\n"));
+        return lines;
     }
 
-    private void addDetailedLogsSection(Document document, List<FoodLogEntity> foodLogs) {
-        Paragraph sectionTitle = new Paragraph("DETAILED FOOD LOG")
-                .setBold()
-                .setFontSize(14)
-                .setMarginBottom(10);
-        document.add(sectionTitle);
 
-        // Create table for food logs
-        float[] columnWidths = {25, 30, 20, 15, 10};
-        Table table = new Table(UnitValue.createPercentArray(columnWidths));
-
-        // Table header
-        table.addHeaderCell(createCell("Food", true));
-        table.addHeaderCell(createCell("Preparation", true));
-        table.addHeaderCell(createCell("Meal Type", true));
-        table.addHeaderCell(createCell("FODMAP", true));
-        table.addHeaderCell(createCell("Stress", true));
-
-        // Table rows
-        for (FoodLogEntity food : foodLogs) {
-            table.addCell(createCell(food.getFoodName(), false));
-            table.addCell(createCell(food.getPreparation(), false));
-            table.addCell(createCell(food.getMealType(), false));
-            table.addCell(createCell(food.getFodmapStatus(), false));
-            table.addCell(createCell(food.getStressLevel() + "/5", false));
-        }
-
-        document.add(table);
-        document.add(new Paragraph("\n"));
-    }
-
-    private void addRecommendationsSection(Document document, List<FoodLogEntity> foodLogs) {
-        Paragraph sectionTitle = new Paragraph("RECOMMENDATIONS")
-                .setBold()
-                .setFontSize(14)
-                .setMarginBottom(10);
-        document.add(sectionTitle);
-
-        // Calculate average stress for recommendations
-        int totalStress = 0;
-        for (FoodLogEntity food : foodLogs) {
-            totalStress += food.getStressLevel();
-        }
-        double avgStress = (double) totalStress / foodLogs.size();
-
-        Paragraph rec1 = new Paragraph("• Continue tracking meals and symptoms for personalized insights")
-                .setMarginBottom(5);
-        document.add(rec1);
-
-        if (avgStress > 3.0) {
-            Paragraph rec2 = new Paragraph("• Practice stress-reduction techniques before meals")
-                    .setMarginBottom(5);
-            document.add(rec2);
-        }
-
-        Paragraph rec3 = new Paragraph("• Share this report with your healthcare provider during consultations")
-                .setMarginBottom(5);
-        document.add(rec3);
-    }
-
-    private com.itextpdf.layout.element.Cell createCell(String text, boolean isHeader) {
-        com.itextpdf.layout.element.Cell cell = new com.itextpdf.layout.element.Cell();
-        Paragraph paragraph = new Paragraph(text);
-
-        if (isHeader) {
-            paragraph.setBold();
-        }
-
-        cell.add(paragraph);
-        cell.setPadding(5);
-
-        return cell;
-    }
 }

@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:padding="16dp"
     android:background="@android:color/white">
 
@@ -22,13 +23,19 @@
             android:layout_marginBottom="16dp" />
 
         <!-- Refresh Button -->
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/refreshButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
             android:text="Refresh Insights"
-            android:layout_gravity="center"
-            android:layout_marginBottom="16dp" />
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:cornerRadius="12dp"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp"
+            android:layout_marginTop="8dp"
+            app:backgroundTint="@color/primary_light" />
+
 
         <!-- Loading Indicator -->
         <ProgressBar
@@ -36,7 +43,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:visibility="gone" />
+            android:layout_marginBottom="16dp"/>
 
         <!-- Insights Text -->
         <TextView
@@ -49,6 +56,12 @@
             android:text="Loading your insights..."
             android:padding="8dp"
             android:background="@drawable/insights_background" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/symptomsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
     </LinearLayout>
 

@@ -11,8 +11,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,7 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 public class InsightsFragment extends Fragment {
-
+    private RecyclerView symptomsRecyclerView;
+    private SymptomsAdapter symptomsAdapter;
     private NutritionViewModel viewModel;
     private TextView insightsTextView;
     private ProgressBar progressBar;
@@ -42,19 +46,222 @@ public class InsightsFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
         refreshButton = view.findViewById(R.id.refreshButton);
 
+        // ✅ ADD THESE LINES: Initialize symptoms RecyclerView
+        symptomsRecyclerView = view.findViewById(R.id.symptomsRecyclerView);
+
+        // TEST: Set initial text to verify TextView works
+        insightsTextView.setText("Loading insights...");
+
         // Initialize ViewModel
         viewModel = new ViewModelProvider(requireActivity()).get(NutritionViewModel.class);
+
+        // ✅ ADD THIS: Setup symptoms RecyclerView and start observing
+        setupSymptomsRecyclerView();
+        observeSymptoms();
 
         // Set up refresh button
         refreshButton.setOnClickListener(v -> loadBasicInsights());
 
-        // Load insights initially
-        loadBasicInsights();
-        //debugDataAvailability();
-
         return view;
     }
 
+    private void setupSymptomsRecyclerView() {
+        symptomsAdapter = new SymptomsAdapter(new ArrayList<>());
+        LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
+        symptomsRecyclerView.setLayoutManager(layoutManager);
+        symptomsRecyclerView.setAdapter(symptomsAdapter);
+    }
+
+    private void observeSymptoms() {
+        Log.d("InsightsFragment", "Starting to observe symptoms data...");
+
+        viewModel.getEntriesWithSymptoms().observe(getViewLifecycleOwner(), entriesWithSymptoms -> {
+            Log.d("InsightsFragment", "Symptoms data received: " +
+                    (entriesWithSymptoms != null ? entriesWithSymptoms.size() : "null"));
+
+            if (entriesWithSymptoms != null && !entriesWithSymptoms.isEmpty()) {
+                // Filter only entries that have actual symptoms
+                List<LogEntryWithSymptoms> entriesWithActualSymptoms = new ArrayList<>();
+                for (LogEntryWithSymptoms entry : entriesWithSymptoms) {
+                    if (entry.symptomName != null && !entry.symptomName.isEmpty()) {
+                        entriesWithActualSymptoms.add(entry);
+                    }
+                }
+
+                if (!entriesWithActualSymptoms.isEmpty()) {
+                    symptomsAdapter.updateData(entriesWithActualSymptoms);
+                    Log.d("InsightsFragment", "Displaying " + entriesWithActualSymptoms.size() + " symptoms");
+                }
+            }
+        });
+    }
+
+    private void updateInsightsDisplay(List<Symptom> symptoms) {
+        StringBuilder insights = new StringBuilder();
+
+        insights.append("=== YOUR SYMPTOM INSIGHTS ===\n\n");
+        insights.append("Total Symptoms Logged: ").append(symptoms.size()).append("\n\n");
+
+        // Calculate symptom frequency
+        Map<String, Integer> symptomCount = new HashMap<>();
+        Map<String, Double> symptomAvgSeverity = new HashMap<>();
+
+        for (Symptom symptom : symptoms) {
+            symptomCount.put(symptom.name, symptomCount.getOrDefault(symptom.name, 0) + 1);
+
+            // Calculate average severity
+            double currentAvg = symptomAvgSeverity.getOrDefault(symptom.name, 0.0);
+            int count = symptomCount.get(symptom.name);
+            double newAvg = (currentAvg * (count - 1) + symptom.severity) / count;
+            symptomAvgSeverity.put(symptom.name, newAvg);
+        }
+
+        insights.append("Most Common Symptoms:\n");
+        for (Map.Entry<String, Integer> entry : symptomCount.entrySet()) {
+            String symptomName = entry.getKey();
+            int frequency = entry.getValue();
+            double avgSeverity = symptomAvgSeverity.get(symptomName);
+
+            insights.append("• ").append(symptomName)
+                    .append(": ").append(frequency).append(" times")
+                    .append(" (Avg severity: ").append(String.format("%.1f", avgSeverity)).append("/5)\n");
+        }
+
+        insights.append("\n=== RECENT SYMPTOMS ===\n");
+        // Show last 5 symptoms
+        int count = Math.min(symptoms.size(), 5);
+        for (int i = 0; i < count; i++) {
+            Symptom symptom = symptoms.get(i);
+            insights.append("• ").append(symptom.name)
+                    .append(" (Severity: ").append(symptom.severity).append("/5)\n");
+        }
+
+        // FORCE THIS TO APPEAR AT THE TOP
+        String symptomInsights = insights.toString();
+
+        // Get the current text and REPLACE or ADD symptom insights
+        String currentText = insightsTextView.getText().toString();
+
+        if (currentText.contains("=== YOUR SYMPTOM INSIGHTS ===")) {
+            // Replace existing symptom insights
+            currentText = currentText.replaceAll("=== YOUR SYMPTOM INSIGHTS ===.*?=== RECENT SYMPTOMS ===[\\s\\S]*?(?=\\n===|$)", symptomInsights);
+        } else {
+            // Add symptom insights at the beginning
+            currentText = symptomInsights + "\n\n" + currentText;
+        }
+
+        insightsTextView.setText(currentText);
+    }
+/*
+    private void updateInsightsDisplay(List<Symptom> symptoms) {
+        String symptomText = "🎯 SYMPTOM INSIGHTS\n\n";
+        symptomText += "You have " + symptoms.size() + " logged symptoms:\n\n";
+
+        // Group by symptom name
+        Map<String, Integer> symptomFreq = new HashMap<>();
+        for (Symptom s : symptoms) {
+            symptomFreq.put(s.name, symptomFreq.getOrDefault(s.name, 0) + 1);
+        }
+
+        for (Map.Entry<String, Integer> entry : symptomFreq.entrySet()) {
+            symptomText += "• " + entry.getKey() + ": " + entry.getValue() + " times\n";
+        }
+
+        // COMPLETELY REPLACE the text view content
+        insightsTextView.setText(symptomText + "\n\n" +
+                "=== OTHER INSIGHTS ===\n" +
+                "Scroll down for food and mood insights...");
+    }*/
+
+
+/*
+    private void setupObservers() {
+        // Observe symptoms data - this will automatically update when data changes
+        viewModel.getAllSymptoms().observe(getViewLifecycleOwner(), symptoms -> {
+            Log.d("INSIGHTS_FRAGMENT", "Symptoms observed: " + (symptoms != null ? symptoms.size() : "null"));
+
+            if (symptoms != null && !symptoms.isEmpty()) {
+                Log.d("INSIGHTS_FRAGMENT", "First symptom: " + symptoms.get(0).name);
+                updateInsightsDisplay(symptoms);
+            } else {
+                Log.d("INSIGHTS_FRAGMENT", "No symptoms to display");
+                insightsTextView.setText("No symptom data available. Add some meals with symptoms to see insights.");
+            }
+        });
+
+        // Also observe log entries with symptoms if you need that data
+        viewModel.getEntriesWithSymptoms().observe(getViewLifecycleOwner(), entries -> {
+            Log.d("INSIGHTS_FRAGMENT", "Entries with symptoms observed: " + (entries != null ? entries.size() : "null"));
+        });
+    }*/
+private void setupObservers() {
+    Log.d("INSIGHTS", "Setting up observers for symptoms");
+
+    viewModel.getAllSymptoms().observe(getViewLifecycleOwner(), symptoms -> {
+        Log.d("INSIGHTS", "GOT " + symptoms.size() + " SYMPTOMS - UPDATING UI");
+
+        // Create the symptom text
+        String symptomText = createSymptomText(symptoms);
+
+        // Update UI on main thread
+        updateUIText(symptomText);
+    });
+}
+
+    private String createSymptomText(List<Symptom> symptoms) {
+        StringBuilder text = new StringBuilder();
+        text.append("🎯 YOUR SYMPTOM INSIGHTS\n\n");
+        text.append("Total Symptoms: ").append(symptoms.size()).append("\n\n");
+
+        text.append("All Your Symptoms:\n");
+        for (Symptom symptom : symptoms) {
+            text.append("• ").append(symptom.name)
+                    .append(" (Severity: ").append(symptom.severity).append("/5)\n");
+        }
+
+        return text.toString();
+    }
+
+    private void updateUIText(String text) {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                if (insightsTextView != null) {
+                    insightsTextView.setText(text);
+                    Log.d("INSIGHTS", "UI UPDATED WITH SYMPTOMS!");
+                } else {
+                    Log.e("INSIGHTS", "TextView is null - cannot update UI");
+                }
+            });
+        }
+    }
+
+
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // SET UP OBSERVERS HERE - This is what you're missing!
+        setupObservers();
+
+        // Load insights initially
+        loadBasicInsights();
+    }
+
+
+
+    private List<LogEntryWithSymptoms> convertSymptomsToDisplay(List<Symptom> symptoms) {
+        List<LogEntryWithSymptoms> result = new ArrayList<>();
+        for (Symptom symptom : symptoms) {
+            LogEntryWithSymptoms entry = new LogEntryWithSymptoms();
+            entry.symptomName = symptom.name;
+            entry.symptomSeverity = symptom.severity;
+            // Create a dummy log entry for display
+            entry.logEntry = new LogEntry();
+            entry.logEntry.timestamp = new Date(symptom.timestamp);
+            entry.logEntry.foods = "Symptom Entry";
+            result.add(entry);
+        }
+        return result;
+    }
     private void debugBrainGutData(List<FoodLogEntity> foodLogs) {
         Log.d("BrainGutDebug", "=== BRAIN-GUT DATA ANALYSIS ===");
         Log.d("BrainGutDebug", "Total food logs: " + foodLogs.size());
@@ -118,6 +325,7 @@ private String generateBasicInsights(List<FoodLogEntity> foodLogs) {
 
     return insights.toString();
 }
+
 
 
     private void loadBasicInsights() {

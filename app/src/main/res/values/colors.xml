@@ -72,6 +72,8 @@
     <!-- Light theme colors -->
     <color name="colorPrimaryLight">#3F51B5</color>
     <color name="colorPrimaryDarkLight">#303F9F</color>
+    <color name="primary_dark">#303F9F</color>
+
     <color name="colorAccentLight">#FF4081</color>
 
     <!-- Dark theme colors -->

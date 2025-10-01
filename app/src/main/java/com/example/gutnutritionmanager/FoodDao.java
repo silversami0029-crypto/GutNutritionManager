@@ -15,6 +15,9 @@ public interface FoodDao {
     @Insert
     void insert(FoodLogEntity foodLog);
 
+    @Insert
+    void insertRecipe(Recipe recipe);
+
     // You'll need to add this method to your FoodDao
     @Query("SELECT * FROM foods WHERE name = :name LIMIT 1")
     Food getFoodByName(String name);
@@ -70,8 +73,6 @@ public interface FoodDao {
     void updateFoodLog(FoodLogEntity foodLog);
 
     // symptom
-    @Query("SELECT * FROM symptoms")
-    List<Symptom> getAllSymptoms();
 
     @Query("SELECT s.* FROM symptoms s " +
             "INNER JOIN log_entries le ON s.logEntryId = le.id " +
@@ -104,7 +105,55 @@ public interface FoodDao {
 
     @Query("SELECT * FROM food_logs ORDER BY timestamp DESC")
     List<FoodLogEntity> getAllFoodLogsDirect();
+    // Add these recipe queries to your FoodDao
+    @Query("SELECT * FROM recipes ORDER BY title ASC")
+    LiveData<List<Recipe>> getAllRecipes();
 
+    @Query("SELECT * FROM recipes WHERE fodmapLevel = 'LOW' ORDER BY title ASC")
+    LiveData<List<Recipe>> getLowFodmapRecipes();
+
+    @Query("SELECT * FROM recipes WHERE category = :category ORDER BY title ASC")
+    LiveData<List<Recipe>> getRecipesByCategory(String category);
+
+    @Query("SELECT * FROM recipes WHERE isFavorite = 1 ORDER BY title ASC")
+    LiveData<List<Recipe>> getFavoriteRecipes();
+
+    @Query("UPDATE recipes SET isFavorite = :isFavorite WHERE id = :recipeId")
+    void setRecipeFavorite(int recipeId, boolean isFavorite);
+
+    @Query("SELECT * FROM recipes WHERE title LIKE '%' || :query || '%' OR ingredients LIKE '%' || :query || '%'")
+    LiveData<List<Recipe>> searchRecipes(String query);
+
+    @Query("SELECT COUNT(*) FROM recipes")
+    int getRecipeCount();
+
+    @Query("SELECT * FROM symptoms WHERE timestamp BETWEEN :startTime AND :endTime")
+    LiveData<List<Symptom>> getSymptomsByDateRange(long startTime, long endTime);
+
+    @Query("SELECT * FROM symptoms")
+    LiveData<List<Symptom>> getAllSymptoms();
+
+    // Add these to FoodDao interface
+    @Query("SELECT * FROM food_logs")
+    List<FoodLogEntity> getAllFoodLogsSync();
+
+    @Query("SELECT * FROM symptoms")
+    List<Symptom> getAllSymptomsSync();
+
+    @Query("SELECT * FROM symptoms WHERE timestamp BETWEEN :startTime AND :endTime")
+    List<Symptom> getSymptomsByDateRangeSync(long startTime,long endTime);
+
+
+    @Query("SELECT * FROM food_logs WHERE date(timestamp / 1000, 'unixepoch') = date('now', '-1 day')")
+    List<FoodLogEntity> getYesterdayFoodLogsSync();
+
+    @Query("SELECT * FROM food_logs WHERE timestamp >= :startTime AND timestamp <= :endTime")
+    List<FoodLogEntity> getFoodLogsByDateRangeSync(long startTime, long endTime);
+
+    @Query("SELECT * FROM food_logs WHERE timestamp >= :sevenDaysAgo")
+    List<FoodLogEntity> getLast7DaysFoodLogsSync(long sevenDaysAgo);
+
+// ... and other sync methods you need
 
 }
 

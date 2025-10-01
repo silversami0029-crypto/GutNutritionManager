@@ -12,7 +12,8 @@
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:tabMode="fixed">
+        app:tabMaxWidth="0dp"
+        app:tabMode="auto">
 
         <com.google.android.material.tabs.TabItem
             android:layout_width="wrap_content"
@@ -29,6 +30,12 @@
             android:layout_height="wrap_content"
             android:text="Insights" />
 
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Recipes" />
+
+
     </com.google.android.material.tabs.TabLayout>
 
     <androidx.viewpager2.widget.ViewPager2
@@ -38,8 +45,3 @@
         android:layout_weight="1" />
 
 </LinearLayout>
-
-
-
-
-
