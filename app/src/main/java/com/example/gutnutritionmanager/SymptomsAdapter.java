@@ -7,21 +7,63 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 // Change SymptomsAdapter to use LogEntryWithSymptoms
 public class SymptomsAdapter extends RecyclerView.Adapter<SymptomsAdapter.ViewHolder> {
 
-    private List<LogEntryWithSymptoms> entriesWithSymptoms;
+    private List<NormalizedSymptom> normalizedSymptoms;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
 
-    public SymptomsAdapter(List<LogEntryWithSymptoms> entriesWithSymptoms) {
-        this.entriesWithSymptoms = entriesWithSymptoms;
+    // New data class for normalized symptoms
+    public static class NormalizedSymptom {
+        public String normalizedName;
+        public String displayName;
+        public int totalOccurrences;
+        public double averageSeverity;
+        public List<LogEntryWithSymptoms> originalEntries;
+
+        public NormalizedSymptom(String normalizedName, List<LogEntryWithSymptoms> entries) {
+            this.normalizedName = normalizedName;
+            this.originalEntries = entries;
+            this.totalOccurrences = entries.size();
+
+            // Calculate average severity
+            this.averageSeverity = entries.stream()
+                    .mapToInt(e -> e.symptomSeverity)
+                    .average()
+                    .orElse(0.0);
+
+            // Create display name with proper capitalization
+            this.displayName = normalizedName.substring(0, 1).toUpperCase() + normalizedName.substring(1);
+        }
+    }
+
+    public SymptomsAdapter(List<NormalizedSymptom> normalizedSymptoms) {
+        this.normalizedSymptoms = normalizedSymptoms;
     }
 
     public void updateData(List<LogEntryWithSymptoms> entriesWithSymptoms) {
-        this.entriesWithSymptoms = entriesWithSymptoms;
+        // Normalize and group symptoms
+        Map<String, List<LogEntryWithSymptoms>> groupedSymptoms = new HashMap<>();
+
+        for (LogEntryWithSymptoms entry : entriesWithSymptoms) {
+            if (entry.symptomName != null && !entry.symptomName.isEmpty()) {
+                String normalizedName = entry.symptomName.trim().toLowerCase();
+                groupedSymptoms.computeIfAbsent(normalizedName, k -> new ArrayList<>()).add(entry);
+            }
+        }
+
+        // Convert to NormalizedSymptom list
+        this.normalizedSymptoms = new ArrayList<>();
+        for (Map.Entry<String, List<LogEntryWithSymptoms>> entry : groupedSymptoms.entrySet()) {
+            normalizedSymptoms.add(new NormalizedSymptom(entry.getKey(), entry.getValue()));
+        }
+
         notifyDataSetChanged();
     }
 
@@ -35,14 +77,19 @@ public class SymptomsAdapter extends RecyclerView.Adapter<SymptomsAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        LogEntryWithSymptoms entry = entriesWithSymptoms.get(position);
+        NormalizedSymptom normalizedSymptom = normalizedSymptoms.get(position);
 
-        holder.symptomName.setText(entry.symptomName);
-        holder.symptomSeverity.setText("Severity: " + entry.symptomSeverity + "/5");
-        holder.symptomTime.setText(dateFormat.format(entry.logEntry.timestamp));
+        holder.symptomName.setText(normalizedSymptom.displayName + " (" + normalizedSymptom.totalOccurrences + " times)");
+        holder.symptomSeverity.setText("Avg severity: " + String.format("%.1f", normalizedSymptom.averageSeverity) + "/5");
 
-        // Set severity color
-        setSeverityColor(holder, entry.symptomSeverity);
+        // Show most recent time or range
+        if (!normalizedSymptom.originalEntries.isEmpty()) {
+            LogEntryWithSymptoms mostRecent = normalizedSymptom.originalEntries.get(0);
+            holder.symptomTime.setText("Recent: " + dateFormat.format(mostRecent.logEntry.timestamp));
+        }
+
+        // Set color based on average severity
+        setSeverityColor(holder, (int) Math.round(normalizedSymptom.averageSeverity));
     }
 
     private void setSeverityColor(ViewHolder holder, int severity) {
@@ -60,7 +107,7 @@ public class SymptomsAdapter extends RecyclerView.Adapter<SymptomsAdapter.ViewHo
 
     @Override
     public int getItemCount() {
-        return entriesWithSymptoms != null ? entriesWithSymptoms.size() : 0;
+        return normalizedSymptoms != null ? normalizedSymptoms.size() : 0;
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

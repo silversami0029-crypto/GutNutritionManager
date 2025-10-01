@@ -119,6 +119,7 @@ public class DiaryFragment extends Fragment {
         // Create a simple edit dialog for FoodLog
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Edit Food: " + foodLog.getFoodName());
+        builder.setIcon(R.drawable.ic_launcher);
 
         // For now, show a simple message - you can enhance this later
         builder.setMessage("Editing functionality coming soon!\n\n" +
@@ -153,6 +154,7 @@ public class DiaryFragment extends Fragment {
     private void deleteFoodLog(FoodLog foodLog) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Delete Food");
+        builder.setIcon(R.drawable.ic_launcher);
         builder.setMessage("Are you sure you want to delete " + foodLog.getFoodName() + "?");
 
         builder.setPositiveButton("Delete", (dialog, which) -> {
@@ -572,6 +574,7 @@ public class DiaryFragment extends Fragment {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Select Report Period");
+        builder.setIcon(R.drawable.ic_launcher);
         builder.setItems(dateOptions, (dialog, which) -> {
             switch (which) {
                 case 0: // Yesterday Text
@@ -696,13 +699,44 @@ public class DiaryFragment extends Fragment {
         // ===== SYMPTOM ANALYSIS =====
         report.append("2. SYMPTOM ANALYSIS\n");
         report.append("===================\n");
+        // to normalise symptoms name
+        Map<String, Integer> symptomCount = new HashMap<>();
+        Map<String, Double> symptomAvgSeverity = new HashMap<>();
+
+        for (Symptom symptom : symptoms) {
+            // NORMALIZE the symptom name: lowercase and trim
+            String normalizedName = symptom.name.trim().toLowerCase();
+
+            symptomCount.put(normalizedName, symptomCount.getOrDefault(normalizedName, 0) + 1);
+
+            // Calculate average severity
+            double currentAvg = symptomAvgSeverity.getOrDefault(normalizedName, 0.0);
+            int count = symptomCount.get(normalizedName);
+            double newAvg = (currentAvg * (count - 1) + symptom.severity) / count;
+            symptomAvgSeverity.put(normalizedName, newAvg);
+        }
+
+         // Then display with proper capitalization
+        for (Map.Entry<String, Integer> entry : symptomCount.entrySet()) {
+            String symptomName = entry.getKey();
+            int frequency = entry.getValue();
+            double avgSeverity = symptomAvgSeverity.get(symptomName);
+
+            // Capitalize first letter for display
+            String displayName = symptomName.substring(0, 1).toUpperCase() + symptomName.substring(1);
+
+            report.append("• ").append(displayName)
+                    .append(": ").append(frequency).append(" occurrences")
+                    .append(" (Avg severity: ").append(String.format("%.1f/5", avgSeverity)).append(")\n");
+        }
+           // end of normalization
 
         if (symptoms.isEmpty()) {
             report.append("No symptoms recorded for this period.\n\n");
         } else {
             // Use your existing symptom analysis logic
-            Map<String, Integer> symptomCount = new HashMap<>();
-            Map<String, Double> symptomAvgSeverity = new HashMap<>();
+           // Map<String, Integer> symptomCount = new HashMap<>();
+           // Map<String, Double> symptomAvgSeverity = new HashMap<>();
 
             for (Symptom symptom : symptoms) {
                 symptomCount.put(symptom.name, symptomCount.getOrDefault(symptom.name, 0) + 1);
@@ -759,7 +793,7 @@ public class DiaryFragment extends Fragment {
         // ===== MOOD-SYMPTOM PATTERNS =====
         report.append("4. MOOD-SYMPTOM PATTERNS\n");
         report.append("=========================\n");
-        if (!foodLogs.isEmpty()) {
+       /* if (!foodLogs.isEmpty()) {
             Map<String, Integer> moodCount = new HashMap<>();
             Map<String, Integer> moodSymptomCount = new HashMap<>();
 
@@ -811,9 +845,9 @@ public class DiaryFragment extends Fragment {
         } else {
             report.append("No mood data available for analysis.\n");
         }
-        report.append("\n");
+        report.append("\n");*/
 
-       /* if (!foodLogs.isEmpty() && !symptoms.isEmpty()) {
+        if (!foodLogs.isEmpty() && !symptoms.isEmpty()) {
             Map<String, Integer> moodCount = new HashMap<>();
             Map<String, Integer> moodSymptomCount = new HashMap<>();
 
@@ -837,7 +871,7 @@ public class DiaryFragment extends Fragment {
                         .append(" meals had symptoms (").append(percentage).append("%)\n");
             }
             report.append("\n");
-        }*/
+        }
 
         // ===== FOOD ANALYSIS =====
         report.append("5. FOOD CONSUMPTION PATTERNS\n");
@@ -978,6 +1012,7 @@ public class DiaryFragment extends Fragment {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("Generate PDF Report");
+        builder.setIcon(R.drawable.ic_launcher);
         builder.setItems(pdfOptions, (dialog, which) -> {
             switch (which) {
                 case 0: // PDF Yesterday
@@ -1325,6 +1360,7 @@ public class DiaryFragment extends Fragment {
         final String[] preparations = {"Raw", "Cooked", "Steamed", "Roasted", "Boiled", "Fried", "Mashed", "Pureed"};
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
         builder.setTitle("How was the " + food.getName() + " prepared?");
+        builder.setIcon(R.drawable.ic_launcher);
         builder.setItems(preparations, (dialog, which) -> {
             String selectedPreparation = preparations[which];
             addFoodWithPreparation(food, selectedPreparation);

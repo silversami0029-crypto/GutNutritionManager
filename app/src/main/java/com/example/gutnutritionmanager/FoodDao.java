@@ -153,7 +153,7 @@ public interface FoodDao {
     @Query("SELECT * FROM food_logs WHERE timestamp >= :sevenDaysAgo")
     List<FoodLogEntity> getLast7DaysFoodLogsSync(long sevenDaysAgo);
 
-// ... and other sync methods you need
+
 
 }
 
